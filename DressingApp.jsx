@@ -350,6 +350,27 @@ function DressingApp() {
     setScreen("parent");
   }
 
+  function returnToSettings() {
+    setCurrentIndex(0);
+    setCheckedItems(new Set());
+    setReward(null);
+    setShowAgain(false);
+    setScreen("parent");
+  }
+
+  function renderSettingsButton() {
+    return (
+      <button
+        type="button"
+        className="settings-button"
+        onClick={returnToSettings}
+        aria-label="Back to temperature settings"
+      >
+        ← Settings
+      </button>
+    );
+  }
+
   function completeCurrentItem() {
     if (!currentItem || checkedItems.has(currentItem.id)) return;
 
@@ -464,6 +485,7 @@ function DressingApp() {
   function renderOverviewScreen() {
     return (
       <main className="dress-app dress-overview">
+        {renderSettingsButton()}
         <header className="overview-header">
           <p>{weather.icon} {weather.outside}</p>
           <h2>First, look at everything</h2>
@@ -490,6 +512,7 @@ function DressingApp() {
   function renderItemScreen() {
     return (
       <main className="dress-app dress-item">
+        {renderSettingsButton()}
         <header className="item-header">
           <div className="step-count">
             {currentIndex + 1} of {weather.items.length}
@@ -542,6 +565,7 @@ function DressingApp() {
   function renderDoneScreen() {
     return (
       <main className="dress-app dress-done">
+        {renderSettingsButton()}
         <div className="confetti" aria-hidden="true">
           {Array.from({ length: 36 }, (_, index) => (
             <span
@@ -717,7 +741,8 @@ const appStyles = `
   .start-button,
   .again-button,
   .names-toggle,
-  .primary-action {
+  .primary-action,
+  .settings-button {
     min-height: 72px;
     border: 0;
     border-radius: 22px;
@@ -820,8 +845,27 @@ const appStyles = `
   .dress-overview,
   .dress-item,
   .dress-done {
+    position: relative;
     min-height: 100vh;
     background: linear-gradient(135deg, #ff6b6b 0%, #ffd93d 100%);
+  }
+
+  .settings-button {
+    position: absolute;
+    left: max(14px, env(safe-area-inset-left));
+    top: max(14px, env(safe-area-inset-top));
+    z-index: 30;
+    min-height: 52px;
+    padding: 0 18px;
+    background: rgba(255, 255, 255, 0.9);
+    color: #e75d38;
+    font-size: 18px;
+    text-shadow: none;
+    box-shadow: 0 10px 24px rgba(113, 55, 28, 0.18);
+  }
+
+  .settings-button:active {
+    transform: translateY(2px);
   }
 
   .dress-overview {

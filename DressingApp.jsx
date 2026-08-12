@@ -1139,6 +1139,9 @@ function DressingApp() {
     const headerText =
       activeOutfit.source === "custom" ? activeOutfit.name : `${weather.icon} ${weather.outside}`;
 
+    const currentItem = outfitItems.find((item) => itemStates[item.id] === "pending");
+    const currentIndex = currentItem ? outfitItems.indexOf(currentItem) : -1;
+
     return (
       <main className="dress-app dress-dressing">
         {renderSettingsButton()}
@@ -1154,41 +1157,31 @@ function DressingApp() {
         </header>
 
         <section
-          className={`dressing-grid ${showNames ? "with-names" : "no-names"}`}
-          aria-label="Dressing items"
+          className={`dressing-single ${showNames ? "with-names" : "no-names"}`}
+          aria-label="Current item to find"
         >
-          {outfitItems.map((item, index) => {
-            const state = itemStates[item.id] ?? "pending";
-            return (
-              <article
-                key={item.id}
-                className={`dressing-tile state-${state}`}
+          {currentItem ? (
+            <article className="dressing-card">
+              <button
+                type="button"
+                className="dressing-tap-large"
+                onClick={() => markItemDone(currentItem, currentIndex)}
+                disabled={Boolean(reward)}
+                aria-label={`Mark ${currentItem.name} as found`}
               >
-                <button
-                  type="button"
-                  className="dressing-tap"
-                  onClick={() => markItemDone(item, index)}
-                  disabled={state !== "pending" || Boolean(reward)}
-                  aria-label={`Mark ${item.name} as found`}
-                >
-                  <ClothingArt item={item} size="small" customSrc={customPhotos[item.id]} blend />
-                  {showNames && <strong>{item.name}</strong>}
-                  {state === "done" && <span className="state-badge done-badge">Done</span>}
-                  {state === "skipped" && <span className="state-badge skipped-badge">Skipped</span>}
-                </button>
-                {state === "pending" && (
-                  <button
-                    type="button"
-                    className="skip-button"
-                    onClick={() => skipItem(item)}
-                    disabled={Boolean(reward)}
-                  >
-                    Skip
-                  </button>
-                )}
-              </article>
-            );
-          })}
+                <ClothingArt item={currentItem} size="large" customSrc={customPhotos[currentItem.id]} blend />
+                {showNames && <strong>{currentItem.name}</strong>}
+              </button>
+              <button
+                type="button"
+                className="skip-button-large"
+                onClick={() => skipItem(currentItem)}
+                disabled={Boolean(reward)}
+              >
+                Skip this item
+              </button>
+            </article>
+          ) : null}
         </section>
 
         {reward && (

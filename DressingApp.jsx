@@ -527,7 +527,7 @@ function DressingApp() {
       pieces: createBurstPieces(rewardTheme),
     });
 
-    const delay = reducedMotion.current ? 350 : 950;
+    const delay = reducedMotion.current ? 1400 : 2800;
     window.setTimeout(() => {
       setReward(null);
       if (checkAllResolved(nextStates)) {
@@ -2408,20 +2408,24 @@ const appStyles = `
   }
 
   .reward-overlay strong {
-    position: relative;
+    position: absolute;
     z-index: 2;
+    bottom: max(20px, 5vh);
+    left: 50%;
+    transform: translateX(-50%);
     padding: 12px 22px;
     border-radius: 999px;
     background: rgba(255, 107, 107, 0.88);
     font-size: clamp(34px, 10vw, 58px);
     font-weight: 900;
+    white-space: nowrap;
   }
 
   .reward-art {
     position: relative;
     z-index: 2;
-    width: min(64vw, 230px);
-    height: min(52vw, 190px);
+    width: min(94vw, 88vh);
+    height: min(78vh, 94vw);
     object-fit: contain;
     user-select: none;
     animation: rewardPop 850ms ease-out both;
@@ -2430,7 +2434,7 @@ const appStyles = `
   .reward-fallback {
     display: grid;
     place-items: center;
-    font-size: clamp(110px, 30vw, 180px);
+    font-size: clamp(180px, 48vw, 420px);
     line-height: 1;
   }
 

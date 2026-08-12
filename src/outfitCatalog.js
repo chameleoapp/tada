@@ -1,5 +1,6 @@
 export const TEMP_MIN = -25;
 export const TEMP_MAX = 30;
+export const SNOW_MAX_TEMP = 0;
 
 const dressItem = { id: "dress", name: "Dress", icon: "👗" };
 
@@ -171,7 +172,7 @@ const boyWeatherSets = {
   },
   snow: {
     label: "Snow",
-    subtitle: "Snowy outside",
+    subtitle: "0°C and below",
     outside: "Snowy outside",
     icon: "🌨️",
     color: "#8EC5FF",
@@ -192,7 +193,7 @@ const boyWeatherSets = {
   },
   snowOverall: {
     label: "Snow (overall)",
-    subtitle: "Snowy outside",
+    subtitle: "0°C and below",
     outside: "Snowy outside (overall)",
     icon: "🌨️",
     color: "#8EC5FF",
@@ -295,9 +296,14 @@ export function getWeatherKey(temp) {
   return "veryCold";
 }
 
+export function isSnowAllowed(temperature) {
+  return temperature <= SNOW_MAX_TEMP;
+}
+
 /** Resolve active weather: rain/snow override temperature bands. */
 export function resolveWeatherKey(temperature, skyCondition = "clear") {
-  if (skyCondition === "rain" || skyCondition === "snow") return skyCondition;
+  if (skyCondition === "rain") return "rain";
+  if (skyCondition === "snow" && isSnowAllowed(temperature)) return "snow";
   return getWeatherKey(temperature);
 }
 

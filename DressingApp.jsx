@@ -34,6 +34,7 @@ import {
   getRepresentativeTemperature,
   getWeatherKeyFromPresetId,
   getWeatherSet,
+  isSnowAllowed,
   listPresetOutfits,
   resolveWeatherKey,
   SKY_CONDITIONS,
@@ -333,6 +334,11 @@ function DressingApp() {
   }, [weatherKey]);
 
   useEffect(() => {
+    if (skyCondition !== "snow" || isSnowAllowed(temperature)) return;
+    setSkyCondition("clear");
+  }, [temperature, skyCondition]);
+
+  useEffect(() => {
     if (libraryAllowed) return;
     setEditingOutfit(null);
     setActiveOutfitId((current) =>
@@ -489,6 +495,7 @@ function DressingApp() {
   }
 
   function selectSkyCondition(conditionId) {
+    if (conditionId === "snow" && !isSnowAllowed(temperature)) return;
     setSkyCondition(conditionId);
     if (conditionId === "rain" || conditionId === "snow") {
       setActiveOutfitId(getPresetOutfitId(conditionId));
@@ -506,6 +513,9 @@ function DressingApp() {
 
     if (presetKey === "rain" || presetKey === "snow") {
       setSkyCondition(presetKey);
+      if (presetKey === "snow" && !isSnowAllowed(temperature)) {
+        setTemperature(getRepresentativeTemperature("snow"));
+      }
       return;
     }
 
@@ -734,12 +744,16 @@ function DressingApp() {
           >
             {SKY_CONDITIONS.map((option) => {
               const selected = skyCondition === option.id;
+              const snowLocked = option.id === "snow" && !isSnowAllowed(temperature);
               return (
                 <button
                   key={option.id}
                   type="button"
                   role="radio"
                   aria-checked={selected}
+                  aria-disabled={snowLocked}
+                  disabled={snowLocked}
+                  title={snowLocked ? "Snow is only available at 0°C and below" : undefined}
                   className={`sky-condition-option ${selected ? "is-selected" : ""}`}
                   onClick={() => selectSkyCondition(option.id)}
                 >
@@ -2007,6 +2021,12 @@ const appStyles = `
   .sky-condition-option.is-selected {
     border-color: #4caf50;
     background: #ffffff;
+  }
+
+  .sky-condition-option:disabled {
+    opacity: 0.42;
+    cursor: not-allowed;
+    box-shadow: none;
   }
 
   .sky-condition-emoji {

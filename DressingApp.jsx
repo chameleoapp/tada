@@ -1162,16 +1162,19 @@ function DressingApp() {
         >
           {currentItem ? (
             <article className="dressing-card">
-              <button
-                type="button"
-                className="dressing-tap-large"
-                onClick={() => markItemDone(currentItem, currentIndex)}
-                disabled={Boolean(reward)}
-                aria-label={`Mark ${currentItem.name} as found`}
-              >
-                <ClothingArt item={currentItem} size="large" customSrc={customPhotos[currentItem.id]} blend />
-                {showNames && <strong>{currentItem.name}</strong>}
-              </button>
+              <div className="dressing-hit">
+                <div className="dressing-visual">
+                  <ClothingArt item={currentItem} size="large" customSrc={customPhotos[currentItem.id]} blend />
+                  {showNames && <strong>{currentItem.name}</strong>}
+                </div>
+                <button
+                  type="button"
+                  className="dressing-tap-large"
+                  onClick={() => markItemDone(currentItem, currentIndex)}
+                  disabled={Boolean(reward)}
+                  aria-label={`Mark ${currentItem.name} as found`}
+                />
+              </div>
               <button
                 type="button"
                 className="skip-button-large"
@@ -1265,6 +1268,7 @@ const appStyles = `
   html,
   body {
     margin: 0;
+    -webkit-tap-highlight-color: transparent;
   }
 
   button,
@@ -1275,6 +1279,20 @@ const appStyles = `
 
   button {
     cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button:focus {
+    outline: none;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    button:focus-visible {
+      outline: 3px solid rgba(255, 255, 255, 0.72);
+      outline-offset: 2px;
+    }
   }
 
   .dress-app {
@@ -2190,8 +2208,17 @@ const appStyles = `
     padding: 2px;
   }
 
+  .dressing-single {
+    display: grid;
+    place-items: center;
+    align-content: center;
+    overflow-y: auto;
+    padding: 2px;
+  }
+
   .outfit-tile,
-  .dressing-tile {
+  .dressing-tile,
+  .dressing-card {
     display: grid;
     gap: 8px;
     min-height: 148px;
@@ -2205,6 +2232,13 @@ const appStyles = `
     box-shadow: 0 12px 24px rgba(127, 69, 32, 0.12);
   }
 
+  .dressing-card {
+    width: min(100%, 420px);
+    min-height: 0;
+    padding: 18px;
+    gap: 14px;
+  }
+
   .dressing-tile.state-done {
     background: rgba(76, 175, 80, 0.28);
     border-color: rgba(255, 255, 255, 0.55);
@@ -2215,27 +2249,47 @@ const appStyles = `
     background: rgba(255, 255, 255, 0.12);
   }
 
-  .dressing-tap {
+  .dressing-hit {
+    position: relative;
+    display: grid;
+  }
+
+  .dressing-visual {
     display: grid;
     gap: 8px;
     justify-items: center;
+    pointer-events: none;
+  }
+
+  .dressing-tap,
+  .dressing-tap-large {
+    position: absolute;
+    inset: 0;
     width: 100%;
+    height: 100%;
     padding: 0;
     border: 0;
+    border-radius: inherit;
     background: transparent;
     color: inherit;
     text-shadow: none;
   }
 
-  .dressing-tap:disabled {
+  .dressing-tap:disabled,
+  .dressing-tap-large:disabled {
     cursor: default;
+    pointer-events: none;
   }
 
   .outfit-tile strong,
-  .dressing-tap strong {
+  .dressing-visual strong {
     font-size: 20px;
     font-weight: 900;
     line-height: 1.05;
+  }
+
+  .dressing-card .dressing-visual strong {
+    font-size: clamp(28px, 8vw, 42px);
   }
 
   .state-badge {
@@ -2258,10 +2312,18 @@ const appStyles = `
     color: #555555;
   }
 
-  .skip-button {
+  .skip-button,
+  .skip-button-large {
     min-height: 42px;
     background: rgba(231, 93, 56, 0.14);
     color: #e75d38;
+  }
+
+  .skip-button-large {
+    min-height: 56px;
+    border: 0;
+    border-radius: 18px;
+    font-weight: 900;
   }
 
   .no-names .outfit-tile,
@@ -2273,6 +2335,8 @@ const appStyles = `
     display: block;
     object-fit: contain;
     user-select: none;
+    pointer-events: none;
+    -webkit-touch-callout: none;
     background: transparent;
   }
 
@@ -2541,7 +2605,7 @@ const appStyles = `
     }
 
     .outfit-tile strong,
-    .dressing-tap strong {
+    .dressing-visual strong {
       font-size: 20px;
     }
   }

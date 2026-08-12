@@ -161,7 +161,14 @@ function DressingApp() {
   const [temperature, setTemperature] = useState(5);
   const [skyCondition, setSkyCondition] = useState("clear");
   const [showNames, setShowNames] = useState(true);
-  const [showOverview, setShowOverview] = useState(true);
+  const [showOverview, setShowOverview] = useState(() => {
+    try {
+      const stored = localStorage.getItem("tada_show_overview");
+      return stored === null ? true : stored === "true";
+    } catch {
+      return true;
+    }
+  });
   const [childGender, setChildGender] = useState(loadStoredChildGender);
   const [rewardThemeId, setRewardThemeId] = useState(() =>
     loadStoredRewardThemeId(loadStoredChildGender()),
@@ -246,6 +253,14 @@ function DressingApp() {
     window.sessionStorage.setItem(key, "1");
     trackEvent("app_open");
   }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("tada_show_overview", String(showOverview));
+    } catch (error) {
+      console.error("Failed to save showOverview setting:", error);
+    }
+  }, [showOverview]);
 
   function openAuthModal(feature, mode = "login") {
     trackEvent(

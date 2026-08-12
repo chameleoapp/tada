@@ -1,6 +1,12 @@
 # Clothing Image Files
 
-Place generated PNG clothing images here using these exact filenames:
+Place generated PNG clothing images here using these exact filenames.
+
+**Style:** Photorealistic product photography, Nordic children's outdoor wear aesthetic (inspired by Reima style), vibrant functional colors, technical fabric textures, commercial product photo quality.
+
+See `../IMAGE_STYLE.md` for detailed generation prompts.
+
+## Required Files:
 
 - `underwear.png`
 - `socks.png`

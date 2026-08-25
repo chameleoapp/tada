@@ -52,9 +52,13 @@ import {
   pickPraise,
   saveRewardThemeId,
 } from "./src/rewardThemes.js";
+import { playItemSpeech, stopItemSpeech, unlockItemAudio } from "./src/itemAudio.js";
 import { trackEvent } from "./src/visitor.js";
 
 const TEMP_WHEEL_STEP = 5;
+const OVERVIEW_SWIPE_DISMISS_PX = 88;
+const OVERVIEW_SWIPE_AXIS_PX = 12;
+const OVERVIEW_SWIPE_EXIT_MS = 220;
 const SUPPORT_URL = import.meta.env.VITE_SUPPORT_URL;
 const FORMSPREE_ENDPOINT = import.meta.env.VITE_FORMSPREE_ENDPOINT;
 
@@ -118,6 +122,153 @@ function clampTemperature(value) {
   return Math.max(TEMP_MIN, Math.min(TEMP_MAX, value));
 }
 
+function OverviewItemTile({ item, showNames, soundEnabled, customSrc, onSpeak, onRemove }) {
+  const dragRef = useRef({
+    pointerId: null,
+    startX: 0,
+    startY: 0,
+    dx: 0,
+    axis: null,
+  });
+  const suppressClickRef = useRef(false);
+  const leavingRef = useRef(false);
+  const [dragX, setDragX] = useState(0);
+  const [isSwiping, setIsSwiping] = useState(false);
+  const [isExiting, setIsExiting] = useState(false);
+
+  function resetDrag() {
+    dragRef.current = { pointerId: null, startX: 0, startY: 0, dx: 0, axis: null };
+    setIsSwiping(false);
+    setDragX(0);
+  }
+
+  function dismiss(direction) {
+    if (leavingRef.current) return;
+    leavingRef.current = true;
+    suppressClickRef.current = true;
+
+    const prefersReducedMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+
+    if (prefersReducedMotion) {
+      onRemove(item.id);
+      return;
+    }
+
+    const flyX = Math.max(window.innerWidth || 360, 360) * (direction === "right" ? 1 : -1);
+    setIsSwiping(false);
+    setIsExiting(true);
+    requestAnimationFrame(() => {
+      setDragX(flyX);
+      window.setTimeout(() => onRemove(item.id), OVERVIEW_SWIPE_EXIT_MS);
+    });
+  }
+
+  function handlePointerDown(event) {
+    if (leavingRef.current || event.button === 2) return;
+    dragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      dx: 0,
+      axis: null,
+    };
+  }
+
+  function handlePointerMove(event) {
+    const drag = dragRef.current;
+    if (drag.pointerId !== event.pointerId || leavingRef.current) return;
+
+    const dx = event.clientX - drag.startX;
+    const dy = event.clientY - drag.startY;
+
+    if (drag.axis == null) {
+      if (Math.abs(dx) < OVERVIEW_SWIPE_AXIS_PX && Math.abs(dy) < OVERVIEW_SWIPE_AXIS_PX) {
+        return;
+      }
+      drag.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+      if (drag.axis === "x") {
+        event.currentTarget.setPointerCapture(event.pointerId);
+        setIsSwiping(true);
+      }
+    }
+
+    if (drag.axis !== "x") return;
+    drag.dx = dx;
+    event.preventDefault();
+    setDragX(dx);
+  }
+
+  function handlePointerEnd(event) {
+    const drag = dragRef.current;
+    if (drag.pointerId !== event.pointerId || leavingRef.current) return;
+
+    const dx = drag.axis === "x" ? drag.dx : event.clientX - drag.startX;
+    if (drag.axis === "x" && Math.abs(dx) >= OVERVIEW_SWIPE_DISMISS_PX) {
+      dismiss(dx > 0 ? "right" : "left");
+      return;
+    }
+
+    if (drag.axis === "x") {
+      suppressClickRef.current = true;
+    }
+
+    resetDrag();
+  }
+
+  function handleClick(event) {
+    if (suppressClickRef.current || isSwiping || isExiting) {
+      event.preventDefault();
+      suppressClickRef.current = false;
+      return;
+    }
+    if (!soundEnabled) return;
+    onSpeak(item);
+  }
+
+  function handleKeyDown(event) {
+    if (event.key === "Backspace" || event.key === "Delete") {
+      event.preventDefault();
+      dismiss("left");
+    }
+  }
+
+  const swipeProgress = Math.min(1, Math.abs(dragX) / OVERVIEW_SWIPE_DISMISS_PX);
+
+  return (
+    <div className={`outfit-tile-slot ${isExiting ? "is-exiting" : ""}`}>
+      <div className="outfit-tile-hint" style={{ opacity: swipeProgress }} aria-hidden="true">
+        Skip
+      </div>
+      <button
+        type="button"
+        className={`outfit-tile ${isSwiping ? "is-swiping" : ""} ${isExiting ? "is-exiting" : ""}`}
+        style={{
+          transform:
+            isSwiping || isExiting || dragX ? `translate3d(${dragX}px, 0, 0)` : undefined,
+          opacity: isExiting ? 0 : 1,
+        }}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerEnd}
+        onPointerCancel={handlePointerEnd}
+        onClick={handleClick}
+        onKeyDown={handleKeyDown}
+        aria-label={
+          soundEnabled
+            ? `Hear ${item.name}. Swipe to remove from today's list`
+            : `${item.name}. Swipe to remove from today's list`
+        }
+      >
+        <ClothingArt item={item} size="small" customSrc={customSrc} blend />
+        {showNames && <strong>{item.name}</strong>}
+        {soundEnabled && <span className="outfit-tile-speak">🔊</span>}
+      </button>
+    </div>
+  );
+}
+
 function createInitialItemStates(items) {
   return Object.fromEntries(items.map((item) => [item.id, "pending"]));
 }
@@ -170,6 +321,14 @@ function DressingApp() {
       return true;
     }
   });
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    try {
+      const stored = localStorage.getItem("tada_say_names");
+      return stored === null ? true : stored === "true";
+    } catch {
+      return true;
+    }
+  });
   const [childGender, setChildGender] = useState(loadStoredChildGender);
   const [rewardThemeId, setRewardThemeId] = useState(() =>
     loadStoredRewardThemeId(loadStoredChildGender()),
@@ -178,6 +337,7 @@ function DressingApp() {
   const [customOutfits, setCustomOutfits] = useState([]);
   const [customPhotos, setCustomPhotos] = useState({});
   const [itemStates, setItemStates] = useState({});
+  const [dismissedItemIds, setDismissedItemIds] = useState([]);
   const [reward, setReward] = useState(null);
   const [showAgain, setShowAgain] = useState(false);
   const [editingOutfit, setEditingOutfit] = useState(null);
@@ -189,6 +349,7 @@ function DressingApp() {
   const isDraggingTemperature = useRef(false);
   const photoInputRefs = useRef({});
   const statusTimerRef = useRef(null);
+  const spokenItemKeyRef = useRef("");
 
   const plan = getCurrentPlan(authPlan);
   const isSignedIn = Boolean(user);
@@ -213,7 +374,19 @@ function DressingApp() {
     return createPresetOutfit(weatherKey, childGender);
   }, [activeOutfitId, availableOutfits, weatherKey, childGender]);
 
-  const outfitItems = activeOutfit.items;
+  const outfitItems = useMemo(
+    () => activeOutfit.items.filter((item) => !dismissedItemIds.includes(item.id)),
+    [activeOutfit, dismissedItemIds],
+  );
+  const lastDismissedItem = useMemo(() => {
+    const itemId = dismissedItemIds[dismissedItemIds.length - 1];
+    if (!itemId) return null;
+    return activeOutfit.items.find((item) => item.id === itemId) ?? null;
+  }, [activeOutfit, dismissedItemIds]);
+  const currentDressingItem =
+    screen === "dressing"
+      ? outfitItems.find((item) => itemStates[item.id] === "pending") ?? null
+      : null;
   const resolvedCount = outfitItems.filter(
     (item) => itemStates[item.id] === "done" || itemStates[item.id] === "skipped",
   ).length;
@@ -262,6 +435,14 @@ function DressingApp() {
       console.error("Failed to save showOverview setting:", error);
     }
   }, [showOverview]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("tada_say_names", String(soundEnabled));
+    } catch (error) {
+      console.error("Failed to save soundEnabled setting:", error);
+    }
+  }, [soundEnabled]);
 
   function openAuthModal(feature, mode = "login") {
     trackEvent(
@@ -320,6 +501,7 @@ function DressingApp() {
       .catch(() => {});
 
     return () => {
+      stopItemSpeech();
       document.head.removeChild(style);
       document.head.removeChild(font);
       motionQuery?.removeEventListener?.("change", syncMotion);
@@ -351,6 +533,25 @@ function DressingApp() {
     const timer = window.setTimeout(() => setShowAgain(true), 2400);
     return () => window.clearTimeout(timer);
   }, [screen]);
+
+  useEffect(() => {
+    if (screen !== "dressing" || reward || !soundEnabled || !currentDressingItem) {
+      if (reward || screen !== "dressing" || !soundEnabled) stopItemSpeech();
+      return undefined;
+    }
+
+    const key = `${currentDressingItem.id}:${currentDressingItem.name}`;
+    if (spokenItemKeyRef.current === key) return undefined;
+    spokenItemKeyRef.current = key;
+    playItemSpeech(currentDressingItem, { enabled: true });
+    return undefined;
+  }, [
+    screen,
+    soundEnabled,
+    reward,
+    currentDressingItem?.id,
+    currentDressingItem?.name,
+  ]);
 
   function getTemperatureFromPointer(clientY) {
     const rect = thermometerLineRef.current?.getBoundingClientRect();
@@ -415,31 +616,47 @@ function DressingApp() {
     setTemperature((value) => clampTemperature(value + change));
   }
 
+  function speakItemNow(item) {
+    if (!soundEnabled || !item) return;
+    spokenItemKeyRef.current = `${item.id}:${item.name}`;
+    playItemSpeech(item, { enabled: true });
+  }
+
   function startDressingFlow() {
+    unlockItemAudio();
     trackEvent(
       "show_outfit",
       { temperature, weather: weatherKey, sky: skyCondition, outfit_id: activeOutfitId },
       user?.id ?? null,
     );
-    setItemStates(createInitialItemStates(outfitItems));
+    setDismissedItemIds([]);
+    const items = activeOutfit.items;
+    setItemStates(createInitialItemStates(items));
     setReward(null);
     setShowAgain(false);
     setScreen(showOverview ? "overview" : "dressing");
+    if (!showOverview) speakItemNow(items[0]);
   }
 
   function startDressing() {
+    if (!outfitItems.length) return;
+    unlockItemAudio();
     setItemStates(createInitialItemStates(outfitItems));
     setReward(null);
     setScreen("dressing");
+    speakItemNow(outfitItems[0]);
   }
 
   function resetApp() {
+    stopItemSpeech();
+    spokenItemKeyRef.current = "";
     setTemperature(5);
     setSkyCondition("clear");
     setShowNames(true);
     setShowOverview(true);
     setActiveOutfitId(getPresetOutfitId("cool"));
     setItemStates({});
+    setDismissedItemIds([]);
     setReward(null);
     setShowAgain(false);
     setEditingOutfit(null);
@@ -447,10 +664,21 @@ function DressingApp() {
   }
 
   function returnToSettings() {
+    stopItemSpeech();
+    spokenItemKeyRef.current = "";
     setItemStates({});
+    setDismissedItemIds([]);
     setReward(null);
     setShowAgain(false);
     setScreen("parent");
+  }
+
+  function dismissOverviewItem(itemId) {
+    setDismissedItemIds((current) => (current.includes(itemId) ? current : [...current, itemId]));
+  }
+
+  function undoLastOverviewDismiss() {
+    setDismissedItemIds((current) => current.slice(0, -1));
   }
 
   function renderSettingsButton() {
@@ -526,6 +754,7 @@ function DressingApp() {
   function markItemDone(item, itemIndex) {
     if (!item || itemStates[item.id] !== "pending" || reward) return;
 
+    stopItemSpeech();
     playTapSound();
     const art = getRewardArt(rewardTheme, itemIndex);
     const nextStates = { ...itemStates, [item.id]: "done" };
@@ -551,6 +780,7 @@ function DressingApp() {
   function skipItem(item) {
     if (!item || itemStates[item.id] !== "pending" || reward) return;
 
+    stopItemSpeech();
     const nextStates = { ...itemStates, [item.id]: "skipped" };
     setItemStates(nextStates);
 
@@ -558,7 +788,11 @@ function DressingApp() {
       setScreen("done");
       setShowAgain(false);
       playWinSound();
+      return;
     }
+
+    const nextItem = outfitItems.find((entry) => nextStates[entry.id] === "pending");
+    speakItemNow(nextItem);
   }
 
   async function handleDuplicateFromTemperature() {
@@ -1087,6 +1321,16 @@ function DressingApp() {
 
           <button
             type="button"
+            className={`names-toggle ${soundEnabled ? "is-on" : ""}`}
+            onClick={() => setSoundEnabled((value) => !value)}
+            aria-pressed={soundEnabled}
+          >
+            <span>Say item names?</span>
+            <strong>{soundEnabled ? "Yes" : "No"}</strong>
+          </button>
+
+          <button
+            type="button"
             className={`names-toggle ${showOverview ? "is-on" : ""}`}
             onClick={() => setShowOverview((value) => !value)}
             aria-pressed={showOverview}
@@ -1128,22 +1372,46 @@ function DressingApp() {
         {renderSettingsButton()}
         <header className="overview-header">
           <p>{headerText}</p>
-          <h2>First, look at everything</h2>
+          <h2>{soundEnabled ? "Tap a picture to hear it" : "First, look at everything"}</h2>
+          <p className="overview-hint">Swipe away what you don't need today</p>
         </header>
 
-        <section className={`outfit-grid ${showNames ? "with-names" : "no-names"}`} aria-label="Full outfit">
-          {outfitItems.map((item) => (
-            <article className="outfit-tile" key={item.id}>
-              <ClothingArt item={item} size="small" customSrc={customPhotos[item.id]} blend />
-              {showNames && <strong>{item.name}</strong>}
-            </article>
-          ))}
-        </section>
+        {outfitItems.length ? (
+          <section
+            className={`outfit-grid ${showNames ? "with-names" : "no-names"}`}
+            aria-label="Full outfit"
+          >
+            {outfitItems.map((item) => (
+              <OverviewItemTile
+                key={item.id}
+                item={item}
+                showNames={showNames}
+                soundEnabled={soundEnabled}
+                customSrc={customPhotos[item.id]}
+                onSpeak={(spokenItem) => playItemSpeech(spokenItem, { enabled: true })}
+                onRemove={dismissOverviewItem}
+              />
+            ))}
+          </section>
+        ) : (
+          <p className="overview-empty">All items were swiped away.</p>
+        )}
 
         <footer className="bottom-action">
-          <button type="button" className="primary-action" onClick={startDressing}>
-            I am ready
-          </button>
+          {lastDismissedItem && (
+            <button type="button" className="undo-dismiss" onClick={undoLastOverviewDismiss}>
+              Undo {lastDismissedItem.name}
+            </button>
+          )}
+          {outfitItems.length ? (
+            <button type="button" className="primary-action" onClick={startDressing}>
+              I am ready
+            </button>
+          ) : (
+            <button type="button" className="primary-action" onClick={returnToSettings}>
+              Back to settings
+            </button>
+          )}
         </footer>
       </main>
     );
@@ -1153,7 +1421,7 @@ function DressingApp() {
     const headerText =
       activeOutfit.source === "custom" ? activeOutfit.name : `${weather.icon} ${weather.outside}`;
 
-    const currentItem = outfitItems.find((item) => itemStates[item.id] === "pending");
+    const currentItem = currentDressingItem;
     const currentIndex = currentItem ? outfitItems.indexOf(currentItem) : -1;
 
     return (
@@ -1189,6 +1457,17 @@ function DressingApp() {
                   aria-label={`Mark ${currentItem.name} as found`}
                 />
               </div>
+              {soundEnabled && (
+                <button
+                  type="button"
+                  className="speak-button"
+                  onClick={() => playItemSpeech(currentItem, { enabled: true })}
+                  disabled={Boolean(reward)}
+                  aria-label={`Hear ${currentItem.name}`}
+                >
+                  🔊 Hear name
+                </button>
+              )}
               <button
                 type="button"
                 className="skip-button-large"
@@ -2209,6 +2488,24 @@ const appStyles = `
     line-height: 1;
   }
 
+  .overview-header .overview-hint {
+    margin-top: 10px;
+    font-size: 18px;
+    font-weight: 800;
+    line-height: 1.2;
+    opacity: 0.9;
+  }
+
+  .overview-empty {
+    display: grid;
+    place-items: center;
+    margin: 0;
+    padding: 24px 12px;
+    font-size: 24px;
+    font-weight: 900;
+    text-align: center;
+  }
+
   .dressing-header .progress-track {
     margin-top: 14px;
   }
@@ -2224,6 +2521,7 @@ const appStyles = `
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
     align-content: start;
+    overflow-x: hidden;
     overflow-y: auto;
     padding: 2px;
   }
@@ -2234,6 +2532,28 @@ const appStyles = `
     align-content: center;
     overflow-y: auto;
     padding: 2px;
+  }
+
+  .outfit-tile-slot {
+    position: relative;
+    overflow: hidden;
+    border-radius: 24px;
+    touch-action: pan-y;
+  }
+
+  .outfit-tile-hint {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    border-radius: 24px;
+    background: rgba(231, 93, 56, 0.9);
+    color: #ffffff;
+    font-size: 28px;
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    pointer-events: none;
   }
 
   .outfit-tile,
@@ -2250,6 +2570,39 @@ const appStyles = `
     text-align: center;
     text-shadow: inherit;
     box-shadow: 0 12px 24px rgba(127, 69, 32, 0.12);
+  }
+
+  button.outfit-tile {
+    width: 100%;
+    font-family: inherit;
+    cursor: grab;
+    touch-action: pan-y;
+    user-select: none;
+    -webkit-user-select: none;
+    transition: transform 180ms ease, opacity 180ms ease;
+  }
+
+  button.outfit-tile:active {
+    transform: scale(0.98);
+  }
+
+  button.outfit-tile.is-swiping {
+    cursor: grabbing;
+    transition: none;
+  }
+
+  button.outfit-tile.is-exiting {
+    pointer-events: none;
+  }
+
+  button.outfit-tile.is-swiping:active,
+  button.outfit-tile.is-exiting:active {
+    transform: none;
+  }
+
+  .outfit-tile-speak {
+    font-size: 18px;
+    line-height: 1;
   }
 
   .dressing-card {
@@ -2333,19 +2686,34 @@ const appStyles = `
   }
 
   .skip-button,
-  .skip-button-large {
+  .skip-button-large,
+  .speak-button {
     min-height: 42px;
     background: rgba(231, 93, 56, 0.14);
     color: #e75d38;
   }
 
-  .skip-button-large {
+  .skip-button-large,
+  .speak-button {
     min-height: 56px;
     border: 0;
     border-radius: 18px;
+    font-family: inherit;
     font-weight: 900;
   }
 
+  .speak-button {
+    background: rgba(255, 255, 255, 0.92);
+    color: #1f7a4d;
+    font-size: 22px;
+    box-shadow: 0 8px 18px rgba(113, 55, 28, 0.14);
+  }
+
+  .speak-button:disabled {
+    opacity: 0.55;
+  }
+
+  .no-names .outfit-tile-slot .outfit-tile,
   .no-names .outfit-tile,
   .no-names .dressing-tile {
     min-height: 164px;
@@ -2395,7 +2763,21 @@ const appStyles = `
   }
 
   .bottom-action {
+    display: grid;
+    gap: 10px;
     padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .undo-dismiss {
+    min-height: 48px;
+    border: 0;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.88);
+    color: #e75d38;
+    font-family: inherit;
+    font-size: 18px;
+    font-weight: 900;
+    box-shadow: 0 8px 18px rgba(113, 55, 28, 0.12);
   }
 
   .progress-track {

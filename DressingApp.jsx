@@ -122,6 +122,44 @@ function clampTemperature(value) {
   return Math.max(TEMP_MIN, Math.min(TEMP_MAX, value));
 }
 
+function SpeakerGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        fill="currentColor"
+        d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"
+      />
+    </svg>
+  );
+}
+
+function SoundBadge({ item, onClick, disabled = false, size = "small" }) {
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        className={`sound-badge sound-badge-${size}`}
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={(event) => {
+          event.stopPropagation();
+          event.preventDefault();
+          onClick(item);
+        }}
+        disabled={disabled}
+        aria-label={`Hear ${item.name}`}
+      >
+        <SpeakerGlyph />
+      </button>
+    );
+  }
+
+  return (
+    <span className={`sound-badge sound-badge-${size}`} aria-hidden="true">
+      <SpeakerGlyph />
+    </span>
+  );
+}
+
 function OverviewItemTile({ item, showNames, soundEnabled, customSrc, onSpeak, onRemove }) {
   const dragRef = useRef({
     pointerId: null,
@@ -261,9 +299,11 @@ function OverviewItemTile({ item, showNames, soundEnabled, customSrc, onSpeak, o
             : `${item.name}. Swipe to remove from today's list`
         }
       >
-        <ClothingArt item={item} size="small" customSrc={customSrc} blend />
+        <div className="item-sound-wrap">
+          <ClothingArt item={item} size="small" customSrc={customSrc} blend />
+          {soundEnabled && <SoundBadge item={item} />}
+        </div>
         {showNames && <strong>{item.name}</strong>}
-        {soundEnabled && <span className="outfit-tile-speak">🔊</span>}
       </button>
     </div>
   );
@@ -476,9 +516,13 @@ function DressingApp() {
   }
 
   useEffect(() => {
-    const style = document.createElement("style");
+    let style = document.getElementById("tada-app-styles");
+    if (!style) {
+      style = document.createElement("style");
+      style.id = "tada-app-styles";
+      document.head.appendChild(style);
+    }
     style.textContent = appStyles;
-    document.head.appendChild(style);
 
     const font = document.createElement("link");
     font.rel = "stylesheet";
@@ -1190,21 +1234,33 @@ function DressingApp() {
                     (outfitItem) => outfitItem.id === item.id,
                   );
                   return (
-                    <button
+                    <div
                       key={item.id}
-                      type="button"
-                      className={`catalog-item ${selected ? "is-selected" : ""}`}
-                      onClick={() => toggleEditingItem(item.id)}
-                      aria-pressed={selected}
+                      className={`catalog-item-wrap ${selected ? "is-selected" : ""}`}
                     >
-                      <ClothingArt
-                        item={item}
-                        size="small"
-                        customSrc={customPhotos[item.id]}
-                        blend
-                      />
-                      <span>{item.name}</span>
-                    </button>
+                      <button
+                        type="button"
+                        className="catalog-item"
+                        onClick={() => toggleEditingItem(item.id)}
+                        aria-pressed={selected}
+                      >
+                        <div className="item-sound-wrap">
+                          <ClothingArt
+                            item={item}
+                            size="small"
+                            customSrc={customPhotos[item.id]}
+                            blend
+                          />
+                        </div>
+                        <span>{item.name}</span>
+                      </button>
+                      {soundEnabled && (
+                        <SoundBadge
+                          item={item}
+                          onClick={() => playItemSpeech(item, { enabled: true })}
+                        />
+                      )}
+                    </div>
                   );
                 })}
               </div>
@@ -1456,18 +1512,15 @@ function DressingApp() {
                   disabled={Boolean(reward)}
                   aria-label={`Mark ${currentItem.name} as found`}
                 />
+                {soundEnabled && (
+                  <SoundBadge
+                    item={currentItem}
+                    size="large"
+                    disabled={Boolean(reward)}
+                    onClick={() => playItemSpeech(currentItem, { enabled: true })}
+                  />
+                )}
               </div>
-              {soundEnabled && (
-                <button
-                  type="button"
-                  className="speak-button"
-                  onClick={() => playItemSpeech(currentItem, { enabled: true })}
-                  disabled={Boolean(reward)}
-                  aria-label={`Hear ${currentItem.name}`}
-                >
-                  🔊 Hear name
-                </button>
-              )}
               <button
                 type="button"
                 className="skip-button-large"
@@ -2165,23 +2218,31 @@ const appStyles = `
     margin-top: 10px;
   }
 
+  .catalog-item-wrap {
+    position: relative;
+    border: 2px solid rgba(255, 255, 255, 0.28);
+    border-radius: 18px;
+  }
+
+  .catalog-item-wrap.is-selected {
+    border-color: #4caf50;
+    box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.35);
+    background: rgba(255, 255, 255, 0.12);
+  }
+
   .catalog-item {
     display: grid;
     gap: 8px;
     justify-items: center;
+    width: 100%;
     min-height: 120px;
     padding: 10px;
-    border: 2px solid rgba(255, 255, 255, 0.28);
-    border-radius: 18px;
+    border: 0;
+    border-radius: 16px;
     background: transparent;
     color: #ffffff;
+    font-family: inherit;
     text-shadow: inherit;
-  }
-
-  .catalog-item.is-selected {
-    border-color: #4caf50;
-    box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.35);
-    background: rgba(255, 255, 255, 0.12);
   }
 
   .catalog-item span {
@@ -2559,6 +2620,7 @@ const appStyles = `
   .outfit-tile,
   .dressing-tile,
   .dressing-card {
+    position: relative;
     display: grid;
     gap: 8px;
     min-height: 148px;
@@ -2600,9 +2662,50 @@ const appStyles = `
     transform: none;
   }
 
-  .outfit-tile-speak {
-    font-size: 18px;
-    line-height: 1;
+  .item-sound-wrap {
+    position: relative;
+    display: grid;
+    justify-items: center;
+    width: 100%;
+  }
+
+  .sound-badge {
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 4;
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 3px solid #ffffff;
+    border-radius: 999px;
+    background: #2e9a57;
+    color: #ffffff;
+    box-shadow: 0 6px 14px rgba(47, 24, 12, 0.28);
+    pointer-events: auto;
+  }
+
+  .sound-badge-large {
+    width: 60px;
+    height: 60px;
+    top: 6px;
+    right: 6px;
+  }
+
+  .sound-badge svg {
+    display: block;
+    width: 56%;
+    height: 56%;
+  }
+
+  button.sound-badge:active {
+    transform: scale(0.94);
+  }
+
+  button.sound-badge:disabled {
+    opacity: 0.5;
   }
 
   .dressing-card {
@@ -2686,31 +2789,18 @@ const appStyles = `
   }
 
   .skip-button,
-  .skip-button-large,
-  .speak-button {
+  .skip-button-large {
     min-height: 42px;
     background: rgba(231, 93, 56, 0.14);
     color: #e75d38;
   }
 
-  .skip-button-large,
-  .speak-button {
+  .skip-button-large {
     min-height: 56px;
     border: 0;
     border-radius: 18px;
     font-family: inherit;
     font-weight: 900;
-  }
-
-  .speak-button {
-    background: rgba(255, 255, 255, 0.92);
-    color: #1f7a4d;
-    font-size: 22px;
-    box-shadow: 0 8px 18px rgba(113, 55, 28, 0.14);
-  }
-
-  .speak-button:disabled {
-    opacity: 0.55;
   }
 
   .no-names .outfit-tile-slot .outfit-tile,

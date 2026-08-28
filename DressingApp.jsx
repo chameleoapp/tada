@@ -450,6 +450,8 @@ function DressingApp() {
   const [isLoadingWeather, setIsLoadingWeather] = useState(false);
   const [weatherLocation, setWeatherLocation] = useState("");
   const [weatherError, setWeatherError] = useState("");
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [quickAddItems, setQuickAddItems] = useState([]);
   const reducedMotion = useRef(false);
   const thermometerLineRef = useRef(null);
   const isDraggingTemperature = useRef(false);
@@ -480,10 +482,13 @@ function DressingApp() {
     return createPresetOutfit(weatherKey, childGender);
   }, [activeOutfitId, availableOutfits, weatherKey, childGender]);
 
-  const outfitItems = useMemo(
-    () => activeOutfit.items.filter((item) => !dismissedItemIds.includes(item.id)),
-    [activeOutfit, dismissedItemIds],
-  );
+  const outfitItems = useMemo(() => {
+    const baseItems = activeOutfit.items.filter((item) => !dismissedItemIds.includes(item.id));
+    const addedItems = quickAddItems
+      .map((id) => clothingCatalog.find((item) => item.id === id))
+      .filter((item) => item && !baseItems.some((base) => base.id === item.id));
+    return [...baseItems, ...addedItems];
+  }, [activeOutfit, dismissedItemIds, quickAddItems]);
   const lastDismissedItem = useMemo(() => {
     const itemId = dismissedItemIds[dismissedItemIds.length - 1];
     if (!itemId) return null;
@@ -1018,6 +1023,36 @@ function DressingApp() {
     });
   }
 
+  function toggleQuickAddItem(itemId) {
+    setQuickAddItems((current) => {
+      if (current.includes(itemId)) {
+        return current.filter((id) => id !== itemId);
+      }
+      return [...current, itemId];
+    });
+  }
+
+  function applyQuickAdd() {
+    if (quickAddItems.length === 0) {
+      setShowQuickAdd(false);
+      return;
+    }
+
+    const itemsToAdd = clothingCatalog.filter((item) => quickAddItems.includes(item.id));
+    const currentItemIds = activeOutfit.items.map((item) => item.id);
+    const newItems = itemsToAdd.filter((item) => !currentItemIds.includes(item.id));
+
+    if (newItems.length > 0) {
+      setDismissedItemIds((current) => 
+        current.filter((id) => !quickAddItems.includes(id))
+      );
+      showStatusMessage(`Added ${newItems.length} item${newItems.length === 1 ? '' : 's'}`);
+    }
+
+    setShowQuickAdd(false);
+    setQuickAddItems([]);
+  }
+
   function renderParentScreen() {
     return (
       <main className="dress-app dress-parent">
@@ -1186,29 +1221,99 @@ function DressingApp() {
           <label className="field-label" htmlFor="outfit-select">
             What to wear today
           </label>
-          <select
-            id="outfit-select"
-            className="outfit-select"
-            value={activeOutfitId}
-            onChange={handleOutfitSelect}
-          >
-            <optgroup label="By weather">
-              {presetOutfits.map((outfit) => (
-                <option key={outfit.id} value={outfit.id}>
-                  {outfit.name}
-                </option>
-              ))}
-            </optgroup>
-            {libraryAllowed && customOutfits.length > 0 && (
-              <optgroup label="From clothing library">
-                {customOutfits.map((outfit) => (
+          <div className="outfit-select-row">
+            <select
+              id="outfit-select"
+              className="outfit-select"
+              value={activeOutfitId}
+              onChange={handleOutfitSelect}
+            >
+              <optgroup label="By weather">
+                {presetOutfits.map((outfit) => (
                   <option key={outfit.id} value={outfit.id}>
                     {outfit.name}
                   </option>
                 ))}
               </optgroup>
-            )}
-          </select>
+              {libraryAllowed && customOutfits.length > 0 && (
+                <optgroup label="From clothing library">
+                  {customOutfits.map((outfit) => (
+                    <option key={outfit.id} value={outfit.id}>
+                      {outfit.name}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+            </select>
+            <button
+              type="button"
+              className="quick-add-button"
+              onClick={() => setShowQuickAdd(true)}
+              aria-label="Add items from library"
+              title="Add items from clothing library"
+            >
+              +
+            </button>
+          </div>
+
+          {showQuickAdd && (
+            <div className="quick-add-modal">
+              <div className="quick-add-header">
+                <h3>Add items from library</h3>
+                <button
+                  type="button"
+                  className="text-button"
+                  onClick={() => {
+                    setShowQuickAdd(false);
+                    setQuickAddItems([]);
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+              <div className="catalog-grid quick-add-grid">
+                {clothingCatalog.map((item) => {
+                  const selected = quickAddItems.includes(item.id);
+                  const alreadyInOutfit = activeOutfit.items.some((outfitItem) => outfitItem.id === item.id) && !dismissedItemIds.includes(item.id);
+                  return (
+                    <div
+                      key={item.id}
+                      className={`catalog-item-wrap ${selected ? "is-selected" : ""} ${alreadyInOutfit ? "is-disabled" : ""}`}
+                    >
+                      <button
+                        type="button"
+                        className="catalog-item"
+                        onClick={() => toggleQuickAddItem(item.id)}
+                        disabled={alreadyInOutfit}
+                        aria-pressed={selected}
+                      >
+                        <div className="item-sound-wrap">
+                          <ClothingArt
+                            item={item}
+                            size="small"
+                            customSrc={customPhotos[item.id]}
+                            blend
+                          />
+                        </div>
+                        <span>{item.name}</span>
+                        {alreadyInOutfit && <span className="already-added">✓</span>}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="quick-add-actions">
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={applyQuickAdd}
+                  disabled={quickAddItems.length === 0}
+                >
+                  Add {quickAddItems.length > 0 ? `${quickAddItems.length} item${quickAddItems.length === 1 ? '' : 's'}` : 'items'}
+                </button>
+              </div>
+            </div>
+          )}
 
           <p className="field-label" id="child-gender-label">
             Child
@@ -1901,6 +2006,97 @@ const appStyles = `
     color: #333333;
     text-shadow: none;
     box-shadow: 0 10px 24px rgba(113, 55, 28, 0.12);
+  }
+
+  .outfit-select-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .quick-add-button {
+    display: grid;
+    place-items: center;
+    min-width: 52px;
+    min-height: 52px;
+    padding: 0;
+    border: 0;
+    border-radius: 18px;
+    background: #4caf50;
+    color: #ffffff;
+    font-size: 32px;
+    font-weight: 900;
+    line-height: 1;
+    box-shadow: 0 10px 24px rgba(76, 175, 80, 0.3);
+  }
+
+  .quick-add-button:active {
+    transform: scale(0.95);
+  }
+
+  .quick-add-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    padding: max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom));
+    background: linear-gradient(135deg, #ff8c69 0%, #ffc04a 100%);
+    overflow: hidden;
+  }
+
+  .quick-add-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .quick-add-header h3 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 900;
+  }
+
+  .quick-add-grid {
+    overflow-y: auto;
+    padding: 2px;
+    margin-bottom: 16px;
+  }
+
+  .quick-add-actions {
+    display: flex;
+    gap: 10px;
+  }
+
+  .quick-add-actions .secondary-button {
+    flex: 1;
+    min-height: 64px;
+    font-size: 18px;
+  }
+
+  .catalog-item-wrap.is-disabled {
+    opacity: 0.5;
+  }
+
+  .catalog-item-wrap.is-disabled .catalog-item {
+    cursor: not-allowed;
+  }
+
+  .already-added {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #4caf50;
+    color: #ffffff;
+    font-size: 16px;
   }
 
   .reward-theme-grid {

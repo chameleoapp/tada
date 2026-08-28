@@ -421,7 +421,6 @@ function DressingApp() {
   const [itemStates, setItemStates] = useState({});
   const [dismissedItemIds, setDismissedItemIds] = useState([]);
   const [reward, setReward] = useState(null);
-  const [showAgain, setShowAgain] = useState(false);
   const [editingOutfit, setEditingOutfit] = useState(null);
   const [showPhotoManager, setShowPhotoManager] = useState(isDevMode());
   const [statusMessage, setStatusMessage] = useState("");
@@ -616,7 +615,14 @@ function DressingApp() {
 
   useEffect(() => {
     if (screen !== "done") return undefined;
-    const timer = window.setTimeout(() => setShowAgain(true), 2400);
+    const timer = window.setTimeout(() => {
+      stopItemSpeech();
+      spokenItemKeyRef.current = "";
+      setItemStates({});
+      setDismissedItemIds([]);
+      setReward(null);
+      setScreen("parent");
+    }, 2800);
     return () => window.clearTimeout(timer);
   }, [screen]);
 
@@ -719,7 +725,6 @@ function DressingApp() {
     const items = activeOutfit.items;
     setItemStates(createInitialItemStates(items));
     setReward(null);
-    setShowAgain(false);
     setScreen(showOverview ? "overview" : "dressing");
     if (!showOverview) speakItemNow(items[0]);
   }
@@ -733,29 +738,12 @@ function DressingApp() {
     speakItemNow(outfitItems[0]);
   }
 
-  function resetApp() {
-    stopItemSpeech();
-    spokenItemKeyRef.current = "";
-    setTemperature(5);
-    setSkyCondition("clear");
-    setShowNames(true);
-    setShowOverview(true);
-    setActiveOutfitId(getPresetOutfitId("cool"));
-    setItemStates({});
-    setDismissedItemIds([]);
-    setReward(null);
-    setShowAgain(false);
-    setEditingOutfit(null);
-    setScreen("parent");
-  }
-
   function returnToSettings() {
     stopItemSpeech();
     spokenItemKeyRef.current = "";
     setItemStates({});
     setDismissedItemIds([]);
     setReward(null);
-    setShowAgain(false);
     setScreen("parent");
   }
 
@@ -857,7 +845,6 @@ function DressingApp() {
       setReward(null);
       if (checkAllResolved(nextStates)) {
         setScreen("done");
-        setShowAgain(false);
         playWinSound();
       }
     }, delay);
@@ -872,7 +859,6 @@ function DressingApp() {
 
     if (checkAllResolved(nextStates)) {
       setScreen("done");
-      setShowAgain(false);
       playWinSound();
       return;
     }
@@ -1623,11 +1609,9 @@ function DressingApp() {
           </div>
           <h2>All dressed!</h2>
           <p>Time to go outside.</p>
-          {showAgain && (
-            <button type="button" className="again-button" onClick={resetApp}>
-              Go again
-            </button>
-          )}
+          <button type="button" className="again-button" onClick={returnToSettings}>
+            Back to settings
+          </button>
         </section>
       </main>
     );

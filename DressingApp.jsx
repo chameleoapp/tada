@@ -319,10 +319,8 @@ function getSharedAudioContext() {
   const AudioContext = window.AudioContext || window.webkitAudioContext;
   if (!AudioContext) return null;
 
-  const ctx = sharedAudioContext || new AudioContext();
-  sharedAudioContext = ctx;
-  ctx.resume?.().catch(() => {});
-  return ctx;
+  if (!sharedAudioContext) sharedAudioContext = new AudioContext();
+  return sharedAudioContext;
 }
 
 function playTone(ctx, { frequency, startAt, duration, volume = 0.22, type = "square" }) {
@@ -335,9 +333,10 @@ function playTone(ctx, { frequency, startAt, duration, volume = 0.22, type = "sq
   gain.connect(ctx.destination);
 
   const peak = Math.max(volume, 0.001);
+  const attack = Math.min(0.02, duration * 0.2);
   gain.gain.setValueAtTime(0.001, startAt);
-  gain.gain.exponentialRampToValueAtTime(peak, startAt + 0.02);
-  gain.gain.exponentialRampToValueAtTime(peak * 0.7, startAt + duration * 0.55);
+  gain.gain.exponentialRampToValueAtTime(peak, startAt + attack);
+  gain.gain.exponentialRampToValueAtTime(peak * 0.75, startAt + duration * 0.55);
   gain.gain.exponentialRampToValueAtTime(0.001, startAt + duration);
 
   oscillator.start(startAt);
@@ -356,9 +355,21 @@ function playChord(ctx, frequencies, startAt, duration, volume = 0.16) {
   });
 }
 
+function scheduleFanfare(ctx, delaySeconds = 0) {
+  const t0 = ctx.currentTime + Math.max(0.02, delaySeconds);
+  // C5 E5 G5 C6 — ta-ta-ta-taa!, then a big C major chord
+  playChord(ctx, [523.25], t0, 0.18, 0.32);
+  playChord(ctx, [659.25], t0 + 0.2, 0.18, 0.32);
+  playChord(ctx, [783.99], t0 + 0.4, 0.18, 0.34);
+  playChord(ctx, [1046.5], t0 + 0.6, 0.45, 0.38);
+  playChord(ctx, [523.25, 659.25, 783.99, 1046.5], t0 + 1.15, 0.9, 0.3);
+}
+
 function playNotes(notes, volume = 0.25, duration = 0.25, step = 0.09) {
   const ctx = getSharedAudioContext();
   if (!ctx) return;
+  // Resume during the gesture; schedule against (possibly frozen) currentTime.
+  if (ctx.state !== "running") ctx.resume().catch(() => {});
 
   notes.forEach((frequency, index) => {
     playTone(ctx, {
@@ -375,18 +386,16 @@ function playTapSound() {
   playNotes([523.25, 659.25, 783.99]);
 }
 
-/** Classic short brass fanfare when the child finishes the outfit. */
-function playWinSound() {
+/**
+ * Fanfare when the outfit is complete.
+ * Call during a user gesture and pass delaySeconds so browsers keep playback allowed
+ * even if the notes start after the reward animation.
+ */
+function playWinSound(delaySeconds = 0) {
   const ctx = getSharedAudioContext();
   if (!ctx) return;
-
-  const t0 = ctx.currentTime + 0.02;
-  // C5 E5 G5 C6 — ta-ta-ta-taa!, then a big C major chord
-  playChord(ctx, [523.25], t0, 0.16, 0.2);
-  playChord(ctx, [659.25], t0 + 0.18, 0.16, 0.2);
-  playChord(ctx, [783.99], t0 + 0.36, 0.16, 0.22);
-  playChord(ctx, [1046.5], t0 + 0.54, 0.42, 0.26);
-  playChord(ctx, [523.25, 659.25, 783.99, 1046.5], t0 + 1.05, 0.85, 0.2);
+  if (ctx.state !== "running") ctx.resume().catch(() => {});
+  scheduleFanfare(ctx, delaySeconds);
 }
 
 function DressingApp() {
@@ -829,9 +838,18 @@ function DressingApp() {
     if (!item || itemStates[item.id] !== "pending" || reward) return;
 
     stopItemSpeech();
-    playTapSound();
     const art = getRewardArt(rewardTheme, itemIndex);
     const nextStates = { ...itemStates, [item.id]: "done" };
+    const finished = checkAllResolved(nextStates);
+    const delay = reducedMotion.current ? 1400 : 2800;
+
+    // Play during the tap gesture so browsers allow audio (delayed start = blocked).
+    if (finished) {
+      playWinSound(0.12);
+    } else {
+      playTapSound();
+    }
+
     setItemStates(nextStates);
     setReward({
       itemId: item.id,
@@ -840,13 +858,9 @@ function DressingApp() {
       pieces: createBurstPieces(rewardTheme),
     });
 
-    const delay = reducedMotion.current ? 1400 : 2800;
     window.setTimeout(() => {
       setReward(null);
-      if (checkAllResolved(nextStates)) {
-        setScreen("done");
-        playWinSound();
-      }
+      if (finished) setScreen("done");
     }, delay);
   }
 
@@ -858,8 +872,8 @@ function DressingApp() {
     setItemStates(nextStates);
 
     if (checkAllResolved(nextStates)) {
-      setScreen("done");
       playWinSound();
+      setScreen("done");
       return;
     }
 

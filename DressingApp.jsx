@@ -1505,13 +1505,6 @@ function DressingApp() {
                   <ClothingArt item={currentItem} size="large" customSrc={customPhotos[currentItem.id]} blend />
                   {showNames && <strong>{currentItem.name}</strong>}
                 </div>
-                <button
-                  type="button"
-                  className="dressing-tap-large"
-                  onClick={() => markItemDone(currentItem, currentIndex)}
-                  disabled={Boolean(reward)}
-                  aria-label={`Mark ${currentItem.name} as found`}
-                />
                 {soundEnabled && (
                   <SoundBadge
                     item={currentItem}
@@ -1521,6 +1514,15 @@ function DressingApp() {
                   />
                 )}
               </div>
+              <button
+                type="button"
+                className="found-button"
+                onClick={() => markItemDone(currentItem, currentIndex)}
+                disabled={Boolean(reward)}
+                aria-label={`Mark ${currentItem.name} as found`}
+              >
+                Found it!
+              </button>
               <button
                 type="button"
                 className="skip-button-large"
@@ -2385,6 +2387,7 @@ const appStyles = `
   .again-button,
   .names-toggle,
   .primary-action,
+  .found-button,
   .settings-button {
     min-height: 72px;
     border: 0;
@@ -2430,7 +2433,8 @@ const appStyles = `
 
   .start-button,
   .again-button,
-  .primary-action {
+  .primary-action,
+  .found-button {
     position: relative;
     width: 100%;
     min-height: 128px;
@@ -2447,7 +2451,8 @@ const appStyles = `
 
   .start-button::before,
   .again-button::before,
-  .primary-action::before {
+  .primary-action::before,
+  .found-button::before {
     content: "";
     position: absolute;
     inset: -28px -8px;
@@ -2457,7 +2462,8 @@ const appStyles = `
 
   .start-button,
   .again-button,
-  .primary-action {
+  .primary-action,
+  .found-button {
     isolation: isolate;
   }
 
@@ -2465,17 +2471,32 @@ const appStyles = `
     margin-top: 26px;
   }
 
+  .found-button {
+    z-index: 1;
+    margin-top: 4px;
+    min-height: 112px;
+    font-size: 28px;
+  }
+
   .start-button:active,
   .again-button:active,
-  .primary-action:active {
+  .primary-action:active,
+  .found-button:active {
     transform: translateY(7px) scale(0.98);
     filter: drop-shadow(0 8px 12px rgba(95, 24, 15, 0.22));
     animation-play-state: paused;
   }
 
+  .found-button:disabled {
+    opacity: 0.55;
+    animation-play-state: paused;
+    pointer-events: none;
+  }
+
   .start-button::after,
   .again-button::after,
-  .primary-action::after {
+  .primary-action::after,
+  .found-button::after {
     content: "";
     position: absolute;
     inset: 62% 10% 7%;
@@ -2737,24 +2758,9 @@ const appStyles = `
     pointer-events: none;
   }
 
-  .dressing-tap,
-  .dressing-tap-large {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    padding: 0;
-    border: 0;
-    border-radius: inherit;
-    background: transparent;
-    color: inherit;
-    text-shadow: none;
-  }
-
-  .dressing-tap:disabled,
-  .dressing-tap-large:disabled {
-    cursor: default;
-    pointer-events: none;
+  .dressing-card .clothing-art-large {
+    width: min(62vw, 280px);
+    height: min(62vw, 280px);
   }
 
   .outfit-tile strong,
@@ -3123,7 +3129,8 @@ const appStyles = `
 
     .start-button,
     .again-button,
-    .primary-action {
+    .primary-action,
+    .found-button {
       animation: none !important;
     }
   }

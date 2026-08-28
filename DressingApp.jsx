@@ -313,29 +313,61 @@ function createInitialItemStates(items) {
   return Object.fromEntries(items.map((item) => [item.id, "pending"]));
 }
 
-function playNotes(notes, volume = 0.25, duration = 0.25, step = 0.09) {
-  if (typeof window === "undefined") return;
+function getSharedAudioContext() {
+  if (typeof window === "undefined") return null;
 
   const AudioContext = window.AudioContext || window.webkitAudioContext;
-  if (!AudioContext) return;
+  if (!AudioContext) return null;
 
   const ctx = sharedAudioContext || new AudioContext();
   sharedAudioContext = ctx;
   ctx.resume?.().catch(() => {});
+  return ctx;
+}
+
+function playTone(ctx, { frequency, startAt, duration, volume = 0.22, type = "square" }) {
+  const oscillator = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  oscillator.type = type;
+  oscillator.frequency.value = frequency;
+  oscillator.connect(gain);
+  gain.connect(ctx.destination);
+
+  const peak = Math.max(volume, 0.001);
+  gain.gain.setValueAtTime(0.001, startAt);
+  gain.gain.exponentialRampToValueAtTime(peak, startAt + 0.02);
+  gain.gain.exponentialRampToValueAtTime(peak * 0.7, startAt + duration * 0.55);
+  gain.gain.exponentialRampToValueAtTime(0.001, startAt + duration);
+
+  oscillator.start(startAt);
+  oscillator.stop(startAt + duration + 0.02);
+}
+
+function playChord(ctx, frequencies, startAt, duration, volume = 0.16) {
+  frequencies.forEach((frequency, index) => {
+    playTone(ctx, {
+      frequency,
+      startAt,
+      duration,
+      volume: volume * (index === 0 ? 1 : 0.72),
+      type: index === 0 ? "square" : "triangle",
+    });
+  });
+}
+
+function playNotes(notes, volume = 0.25, duration = 0.25, step = 0.09) {
+  const ctx = getSharedAudioContext();
+  if (!ctx) return;
 
   notes.forEach((frequency, index) => {
-    const startAt = ctx.currentTime + index * step;
-    const oscillator = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    oscillator.type = "sine";
-    oscillator.frequency.value = frequency;
-    oscillator.connect(gain);
-    gain.connect(ctx.destination);
-    gain.gain.setValueAtTime(volume, startAt);
-    gain.gain.exponentialRampToValueAtTime(0.001, startAt + duration);
-    oscillator.start(startAt);
-    oscillator.stop(startAt + duration);
+    playTone(ctx, {
+      frequency,
+      startAt: ctx.currentTime + index * step,
+      duration,
+      volume,
+      type: "sine",
+    });
   });
 }
 
@@ -343,8 +375,18 @@ function playTapSound() {
   playNotes([523.25, 659.25, 783.99]);
 }
 
+/** Classic short brass fanfare when the child finishes the outfit. */
 function playWinSound() {
-  playNotes([523.25, 659.25, 783.99, 1046.5, 1318.51], 0.28, 0.35, 0.11);
+  const ctx = getSharedAudioContext();
+  if (!ctx) return;
+
+  const t0 = ctx.currentTime + 0.02;
+  // C5 E5 G5 C6 — ta-ta-ta-taa!, then a big C major chord
+  playChord(ctx, [523.25], t0, 0.16, 0.2);
+  playChord(ctx, [659.25], t0 + 0.18, 0.16, 0.2);
+  playChord(ctx, [783.99], t0 + 0.36, 0.16, 0.22);
+  playChord(ctx, [1046.5], t0 + 0.54, 0.42, 0.26);
+  playChord(ctx, [523.25, 659.25, 783.99, 1046.5], t0 + 1.05, 0.85, 0.2);
 }
 
 function DressingApp() {

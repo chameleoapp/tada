@@ -54,6 +54,11 @@ import {
 } from "./src/rewardThemes.js";
 import { playItemSpeech, stopItemSpeech, unlockItemAudio } from "./src/itemAudio.js";
 import { trackEvent } from "./src/visitor.js";
+import {
+  getCurrentWeather,
+  clearWeatherCache,
+  formatLocation,
+} from "./src/weatherService.js";
 
 const TEMP_WHEEL_STEP = 5;
 const OVERVIEW_SWIPE_DISMISS_PX = 88;
@@ -434,6 +439,17 @@ function DressingApp() {
   const [showPhotoManager, setShowPhotoManager] = useState(isDevMode());
   const [statusMessage, setStatusMessage] = useState("");
   const [authModal, setAuthModal] = useState(null);
+  const [autoWeatherEnabled, setAutoWeatherEnabled] = useState(() => {
+    try {
+      const stored = localStorage.getItem("tada_auto_weather");
+      return stored === "true";
+    } catch {
+      return false;
+    }
+  });
+  const [isLoadingWeather, setIsLoadingWeather] = useState(false);
+  const [weatherLocation, setWeatherLocation] = useState("");
+  const [weatherError, setWeatherError] = useState("");
   const reducedMotion = useRef(false);
   const thermometerLineRef = useRef(null);
   const isDraggingTemperature = useRef(false);
@@ -533,6 +549,14 @@ function DressingApp() {
       console.error("Failed to save soundEnabled setting:", error);
     }
   }, [soundEnabled]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("tada_auto_weather", String(autoWeatherEnabled));
+    } catch (error) {
+      console.error("Failed to save autoWeatherEnabled setting:", error);
+    }
+  }, [autoWeatherEnabled]);
 
   function openAuthModal(feature, mode = "login") {
     trackEvent(
@@ -805,6 +829,39 @@ function DressingApp() {
     });
   }
 
+  async function loadAutoWeather() {
+    if (isLoadingWeather) return;
+    
+    setIsLoadingWeather(true);
+    setWeatherError("");
+    
+    try {
+      const weatherData = await getCurrentWeather();
+      setTemperature(weatherData.temperature);
+      setSkyCondition(weatherData.skyCondition);
+      setWeatherLocation(formatLocation(weatherData));
+      showStatusMessage("Weather updated automatically");
+      trackEvent("auto_weather_loaded", { temperature: weatherData.temperature, sky: weatherData.skyCondition }, user?.id ?? null);
+    } catch (error) {
+      console.error("Failed to load weather:", error);
+      setWeatherError(error.message || "Unable to get weather");
+      showStatusMessage("Could not get weather. Please enable location access.");
+    } finally {
+      setIsLoadingWeather(false);
+    }
+  }
+
+  function refreshWeather() {
+    clearWeatherCache();
+    loadAutoWeather();
+  }
+
+  useEffect(() => {
+    if (autoWeatherEnabled && screen === "parent") {
+      loadAutoWeather();
+    }
+  }, [autoWeatherEnabled, screen]);
+
   function selectSkyCondition(conditionId) {
     if (conditionId === "snow" && !isSnowAllowed(temperature)) return;
     setSkyCondition(conditionId);
@@ -1034,57 +1091,90 @@ function DressingApp() {
               <div className="range">
                 {weather.label} · {weather.subtitle}
               </div>
+              {weatherLocation && (
+                <div className="weather-location">{weatherLocation}</div>
+              )}
             </div>
           </div>
 
-          <div className="temp-controls" aria-label="Choose temperature">
-            <button
-              type="button"
-              onClick={() => setTemperature((value) => clampTemperature(value - 1))}
-              aria-label="Make it colder"
-            >
-              −
-            </button>
-            <button
-              type="button"
-              onClick={() => setTemperature((value) => clampTemperature(value + 1))}
-              aria-label="Make it warmer"
-            >
-              +
-            </button>
-          </div>
-
-          <p className="field-label" id="sky-condition-label">
-            Weather outside
-          </p>
-          <div
-            className="sky-condition-grid"
-            role="radiogroup"
-            aria-labelledby="sky-condition-label"
+          <button
+            type="button"
+            className={`names-toggle auto-weather-toggle ${autoWeatherEnabled ? "is-on" : ""}`}
+            onClick={() => setAutoWeatherEnabled((value) => !value)}
+            aria-pressed={autoWeatherEnabled}
           >
-            {SKY_CONDITIONS.map((option) => {
-              const selected = skyCondition === option.id;
-              const snowLocked = option.id === "snow" && !isSnowAllowed(temperature);
-              return (
+            <span>Automatic weather?</span>
+            <strong>{autoWeatherEnabled ? "On" : "Off"}</strong>
+          </button>
+
+          {autoWeatherEnabled && (
+            <div className="auto-weather-controls">
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={refreshWeather}
+                disabled={isLoadingWeather}
+              >
+                {isLoadingWeather ? "Loading..." : "Refresh weather"}
+              </button>
+              {weatherError && (
+                <p className="weather-error">{weatherError}</p>
+              )}
+            </div>
+          )}
+
+          {!autoWeatherEnabled && (
+            <>
+              <div className="temp-controls" aria-label="Choose temperature">
                 <button
-                  key={option.id}
                   type="button"
-                  role="radio"
-                  aria-checked={selected}
-                  aria-disabled={snowLocked}
-                  disabled={snowLocked}
-                  title={snowLocked ? "Snow is only available at 0°C and below" : undefined}
-                  className={`sky-condition-option ${selected ? "is-selected" : ""}`}
-                  onClick={() => selectSkyCondition(option.id)}
+                  onClick={() => setTemperature((value) => clampTemperature(value - 1))}
+                  aria-label="Make it colder"
                 >
-                  <span className="sky-condition-emoji" aria-hidden="true">
-                    {option.icon}
-                  </span>
-                  <strong>{option.label}</strong>
+                  −
                 </button>
-              );
-            })}
-          </div>
+                <button
+                  type="button"
+                  onClick={() => setTemperature((value) => clampTemperature(value + 1))}
+                  aria-label="Make it warmer"
+                >
+                  +
+                </button>
+              </div>
+
+              <p className="field-label" id="sky-condition-label">
+                Weather outside
+              </p>
+              <div
+                className="sky-condition-grid"
+                role="radiogroup"
+                aria-labelledby="sky-condition-label"
+              >
+                {SKY_CONDITIONS.map((option) => {
+                  const selected = skyCondition === option.id;
+                  const snowLocked = option.id === "snow" && !isSnowAllowed(temperature);
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      aria-disabled={snowLocked}
+                      disabled={snowLocked}
+                      title={snowLocked ? "Snow is only available at 0°C and below" : undefined}
+                      className={`sky-condition-option ${selected ? "is-selected" : ""}`}
+                      onClick={() => selectSkyCondition(option.id)}
+                    >
+                      <span className="sky-condition-emoji" aria-hidden="true">
+                        {option.icon}
+                      </span>
+                      <strong>{option.label}</strong>
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
 
           <label className="field-label" htmlFor="outfit-select">
             What to wear today
@@ -2371,6 +2461,38 @@ const appStyles = `
     font-size: 56px;
     font-weight: 900;
     line-height: 1;
+  }
+
+  .weather-location {
+    margin-top: 6px;
+    font-size: 14px;
+    font-weight: 800;
+    opacity: 0.85;
+  }
+
+  .auto-weather-toggle {
+    margin-top: 18px;
+  }
+
+  .auto-weather-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 12px;
+    padding: 12px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  .weather-error {
+    width: 100%;
+    margin: 0;
+    padding: 8px 12px;
+    border-radius: 12px;
+    background: rgba(255, 107, 107, 0.28);
+    font-size: 15px;
+    font-weight: 800;
+    line-height: 1.3;
   }
 
   .temp-controls {

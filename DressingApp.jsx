@@ -844,8 +844,11 @@ function DressingApp() {
       trackEvent("auto_weather_loaded", { temperature: weatherData.temperature, sky: weatherData.skyCondition }, user?.id ?? null);
     } catch (error) {
       console.error("Failed to load weather:", error);
-      setWeatherError(error.message || "Unable to get weather");
-      showStatusMessage("Could not get weather. Please enable location access.");
+      const errorMsg = error.message.includes("denied") 
+        ? "Tap 'Get weather' button to allow location access"
+        : "Unable to get weather";
+      setWeatherError(errorMsg);
+      showStatusMessage("Please tap 'Get weather' to enable location.");
     } finally {
       setIsLoadingWeather(false);
     }
@@ -856,11 +859,12 @@ function DressingApp() {
     loadAutoWeather();
   }
 
-  useEffect(() => {
-    if (autoWeatherEnabled && screen === "parent") {
-      loadAutoWeather();
+  function handleAutoWeatherToggle(enabled) {
+    setAutoWeatherEnabled(enabled);
+    if (enabled) {
+      setWeatherError("");
     }
-  }, [autoWeatherEnabled, screen]);
+  }
 
   function selectSkyCondition(conditionId) {
     if (conditionId === "snow" && !isSnowAllowed(temperature)) return;
@@ -1100,7 +1104,7 @@ function DressingApp() {
           <button
             type="button"
             className={`names-toggle auto-weather-toggle ${autoWeatherEnabled ? "is-on" : ""}`}
-            onClick={() => setAutoWeatherEnabled((value) => !value)}
+            onClick={() => handleAutoWeatherToggle(!autoWeatherEnabled)}
             aria-pressed={autoWeatherEnabled}
           >
             <span>Automatic weather?</span>
@@ -1111,14 +1115,17 @@ function DressingApp() {
             <div className="auto-weather-controls">
               <button
                 type="button"
-                className="secondary-button"
-                onClick={refreshWeather}
+                className="secondary-button weather-get-button"
+                onClick={loadAutoWeather}
                 disabled={isLoadingWeather}
               >
-                {isLoadingWeather ? "Loading..." : "Refresh weather"}
+                {isLoadingWeather ? "Loading..." : weatherLocation ? "Refresh weather" : "Get weather"}
               </button>
               {weatherError && (
                 <p className="weather-error">{weatherError}</p>
+              )}
+              {weatherLocation && !weatherError && (
+                <p className="weather-success">✓ Weather from your location</p>
               )}
             </div>
           )}
@@ -2493,6 +2500,21 @@ const appStyles = `
     font-size: 15px;
     font-weight: 800;
     line-height: 1.3;
+  }
+
+  .weather-success {
+    width: 100%;
+    margin: 0;
+    padding: 8px 12px;
+    border-radius: 12px;
+    background: rgba(76, 175, 80, 0.28);
+    font-size: 15px;
+    font-weight: 800;
+    line-height: 1.3;
+  }
+
+  .weather-get-button {
+    width: 100%;
   }
 
   .temp-controls {

@@ -289,7 +289,7 @@ function OverviewItemTile({ item, showNames, soundEnabled, customSrc, onSpeak, o
         className={`outfit-tile ${isSwiping ? "is-swiping" : ""} ${isExiting ? "is-exiting" : ""}`}
         style={{
           transform:
-            isSwiping || isExiting || dragX ? `translate3d(${dragX}px, 0, 0)` : undefined,
+            isSwiping || isExiting ? `translate3d(${dragX}px, 0, 0)` : undefined,
           opacity: isExiting ? 0 : 1,
         }}
         onPointerDown={handlePointerDown}

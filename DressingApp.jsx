@@ -2221,7 +2221,8 @@ const appStyles = `
     z-index: 1000;
     display: grid;
     grid-template-rows: auto 1fr auto;
-    padding: max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom));
+    padding: 20px;
+    padding: max(20px, env(safe-area-inset-top, 0px)) 20px max(20px, env(safe-area-inset-bottom, 0px));
     background: linear-gradient(135deg, #ff8c69 0%, #ffc04a 100%);
     overflow: hidden;
   }
@@ -3090,8 +3091,10 @@ const appStyles = `
 
   .back-button {
     position: absolute;
-    left: max(14px, env(safe-area-inset-left));
-    top: max(14px, env(safe-area-inset-top));
+    left: 14px;
+    left: max(14px, env(safe-area-inset-left, 0px));
+    top: 14px;
+    top: max(14px, env(safe-area-inset-top, 0px));
     z-index: 30;
     min-height: 56px;
     min-width: 56px;
@@ -3122,7 +3125,8 @@ const appStyles = `
     display: grid;
     grid-template-rows: auto 1fr auto;
     gap: 14px;
-    padding: max(18px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+    padding: 18px 16px 16px;
+    padding: max(18px, env(safe-area-inset-top, 0px)) 16px max(16px, env(safe-area-inset-bottom, 0px));
   }
 
   .dress-dressing {
@@ -3566,7 +3570,8 @@ const appStyles = `
     display: grid;
     gap: 10px;
     padding-top: 32px;
-    padding-bottom: env(safe-area-inset-bottom);
+    padding-bottom: 0;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
     position: relative;
     z-index: 1;
   }

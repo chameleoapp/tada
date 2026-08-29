@@ -10,6 +10,14 @@ const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
  */
 export async function getUserLocation() {
   return new Promise((resolve, reject) => {
+    // Check if running in secure context (HTTPS or localhost)
+    if (window.location.protocol !== 'https:' && 
+        window.location.hostname !== 'localhost' && 
+        window.location.hostname !== '127.0.0.1') {
+      reject(new Error("Location access requires HTTPS. Please use a secure connection."));
+      return;
+    }
+
     if (!navigator.geolocation) {
       reject(new Error("Geolocation is not supported by this browser"));
       return;
@@ -23,9 +31,24 @@ export async function getUserLocation() {
         });
       },
       (error) => {
-        reject(new Error(`Location access denied: ${error.message}`));
+        let errorMessage = "Location access denied";
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = "Location permission denied. Please enable location access in your browser settings.";
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = "Location information is unavailable.";
+            break;
+          case error.TIMEOUT:
+            errorMessage = "Location request timed out.";
+            break;
+          default:
+            errorMessage = `Location error: ${error.message}`;
+        }
+        reject(new Error(errorMessage));
       },
       {
+        enableHighAccuracy: false,
         timeout: 10000,
         maximumAge: 5 * 60 * 1000, // Accept cached position up to 5 minutes old
       }

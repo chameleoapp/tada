@@ -899,11 +899,22 @@ function DressingApp() {
       trackEvent("auto_weather_loaded", { temperature: weatherData.temperature, sky: weatherData.skyCondition }, user?.id ?? null);
     } catch (error) {
       console.error("Failed to load weather:", error);
-      const errorMsg = error.message.includes("denied") 
-        ? "Tap 'Get weather' button to allow location access"
-        : "Unable to get weather";
+      
+      let errorMsg = "Unable to get weather";
+      if (error.message.includes("denied") || error.message.includes("permission")) {
+        errorMsg = error.message;
+      } else if (error.message.includes("not supported")) {
+        errorMsg = "Your browser doesn't support location services";
+      } else if (error.message.includes("timeout")) {
+        errorMsg = "Location request timed out. Please try again.";
+      } else if (error.message.includes("unavailable")) {
+        errorMsg = "Location is currently unavailable";
+      } else if (error.message) {
+        errorMsg = error.message;
+      }
+      
       setWeatherError(errorMsg);
-      showStatusMessage("Please tap 'Get weather' to enable location.");
+      showStatusMessage(errorMsg);
     } finally {
       setIsLoadingWeather(false);
     }
@@ -1226,6 +1237,11 @@ function DressingApp() {
               >
                 {isLoadingWeather ? "Loading..." : weatherLocation ? "Refresh weather" : "Get weather"}
               </button>
+              {!weatherLocation && !weatherError && (
+                <p className="weather-hint">
+                  Tap 'Get weather' button to allow location access
+                </p>
+              )}
               {weatherError && (
                 <p className="weather-error">{weatherError}</p>
               )}
@@ -2887,6 +2903,18 @@ const appStyles = `
     font-size: 15px;
     font-weight: 800;
     line-height: 1.3;
+  }
+
+  .weather-hint {
+    width: 100%;
+    margin: 0;
+    padding: 8px 12px;
+    border-radius: 12px;
+    background: rgba(255, 152, 0, 0.15);
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.3;
+    color: #333;
   }
 
   .weather-success {

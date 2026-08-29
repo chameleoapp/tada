@@ -452,6 +452,7 @@ function DressingApp() {
   const [weatherError, setWeatherError] = useState("");
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [quickAddItems, setQuickAddItems] = useState([]);
+  const [permanentAddedItems, setPermanentAddedItems] = useState([]);
   const reducedMotion = useRef(false);
   const thermometerLineRef = useRef(null);
   const isDraggingTemperature = useRef(false);
@@ -484,11 +485,14 @@ function DressingApp() {
 
   const outfitItems = useMemo(() => {
     const baseItems = activeOutfit.items.filter((item) => !dismissedItemIds.includes(item.id));
-    const addedItems = quickAddItems
+    const tempItems = quickAddItems
       .map((id) => clothingCatalog.find((item) => item.id === id))
       .filter((item) => item && !baseItems.some((base) => base.id === item.id));
-    return [...baseItems, ...addedItems];
-  }, [activeOutfit, dismissedItemIds, quickAddItems]);
+    const permItems = permanentAddedItems
+      .map((id) => clothingCatalog.find((item) => item.id === id))
+      .filter((item) => item && !baseItems.some((base) => base.id === item.id) && !tempItems.some((temp) => temp.id === item.id));
+    return [...baseItems, ...permItems, ...tempItems];
+  }, [activeOutfit, dismissedItemIds, quickAddItems, permanentAddedItems]);
   const lastDismissedItem = useMemo(() => {
     const itemId = dismissedItemIds[dismissedItemIds.length - 1];
     if (!itemId) return null;
@@ -781,6 +785,7 @@ function DressingApp() {
     spokenItemKeyRef.current = "";
     setItemStates({});
     setDismissedItemIds([]);
+    setPermanentAddedItems([]);
     setReward(null);
     setScreen("parent");
   }
@@ -1046,6 +1051,10 @@ function DressingApp() {
       setDismissedItemIds((current) => 
         current.filter((id) => !quickAddItems.includes(id))
       );
+      setPermanentAddedItems((current) => {
+        const allIds = [...current, ...quickAddItems];
+        return [...new Set(allIds)];
+      });
       showStatusMessage(`Added ${newItems.length} item${newItems.length === 1 ? '' : 's'}`);
     }
 
@@ -1581,8 +1590,7 @@ function DressingApp() {
             <strong>{showOverview ? "Yes" : "No"}</strong>
           </button>
 
-          <button type="button" className="start-button" onClick={startDressingFlow}>
-            Show outfit
+          <button type="button" className="start-button" onClick={startDressingFlow} aria-label="Show outfit">
           </button>
 
           {(SUPPORT_URL || FORMSPREE_ENDPOINT) && (
@@ -1729,12 +1737,10 @@ function DressingApp() {
             </button>
           )}
           {outfitItems.length ? (
-            <button type="button" className="primary-action" onClick={startDressing}>
-              I am ready
+            <button type="button" className="primary-action" onClick={startDressing} aria-label="I am ready">
             </button>
           ) : (
-            <button type="button" className="primary-action" onClick={returnToSettings}>
-              Back to settings
+            <button type="button" className="primary-action" onClick={returnToSettings} aria-label="Back to settings">
             </button>
           )}
         </footer>
@@ -1852,7 +1858,6 @@ function DressingApp() {
                 disabled={Boolean(reward)}
                 aria-label={`Mark ${currentItem.name} as found`}
               >
-                Found it!
               </button>
               <button
                 type="button"
@@ -1912,8 +1917,7 @@ function DressingApp() {
           </div>
           <h2>All dressed!</h2>
           <p>Time to go outside.</p>
-          <button type="button" className="again-button" onClick={returnToSettings}>
-            Back to settings
+          <button type="button" className="again-button" onClick={returnToSettings} aria-label="Back to settings">
           </button>
         </section>
       </main>

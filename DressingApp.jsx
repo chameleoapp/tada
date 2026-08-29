@@ -363,11 +363,11 @@ function playChord(ctx, frequencies, startAt, duration, volume = 0.16) {
 function scheduleFanfare(ctx, delaySeconds = 0) {
   const t0 = ctx.currentTime + Math.max(0.02, delaySeconds);
   // C5 E5 G5 C6 — ta-ta-ta-taa!, then a big C major chord
-  playChord(ctx, [523.25], t0, 0.18, 0.32);
-  playChord(ctx, [659.25], t0 + 0.2, 0.18, 0.32);
-  playChord(ctx, [783.99], t0 + 0.4, 0.18, 0.34);
-  playChord(ctx, [1046.5], t0 + 0.6, 0.45, 0.38);
-  playChord(ctx, [523.25, 659.25, 783.99, 1046.5], t0 + 1.15, 0.9, 0.3);
+  playChord(ctx, [523.25], t0, 0.18, 0.5);
+  playChord(ctx, [659.25], t0 + 0.2, 0.18, 0.5);
+  playChord(ctx, [783.99], t0 + 0.4, 0.18, 0.52);
+  playChord(ctx, [1046.5], t0 + 0.6, 0.45, 0.55);
+  playChord(ctx, [523.25, 659.25, 783.99, 1046.5], t0 + 1.15, 0.9, 0.48);
 }
 
 function playNotes(notes, volume = 0.25, duration = 0.25, step = 0.09) {
@@ -388,7 +388,7 @@ function playNotes(notes, volume = 0.25, duration = 0.25, step = 0.09) {
 }
 
 function playTapSound() {
-  playNotes([523.25, 659.25, 783.99]);
+  playNotes([523.25, 659.25, 783.99], 0.4);
 }
 
 /**
@@ -758,6 +758,7 @@ function DressingApp() {
 
   function startDressingFlow() {
     unlockItemAudio();
+    playTapSound();
     trackEvent(
       "show_outfit",
       { temperature, weather: weatherKey, sky: skyCondition, outfit_id: activeOutfitId },
@@ -774,6 +775,7 @@ function DressingApp() {
   function startDressing() {
     if (!outfitItems.length) return;
     unlockItemAudio();
+    playTapSound();
     setItemStates(createInitialItemStates(outfitItems));
     setReward(null);
     setScreen("dressing");

@@ -798,15 +798,15 @@ function DressingApp() {
     setDismissedItemIds((current) => current.slice(0, -1));
   }
 
-  function renderSettingsButton() {
+  function renderBackButton(label = "Back to settings") {
     return (
       <button
         type="button"
-        className="settings-button"
+        className="back-button"
         onClick={returnToSettings}
-        aria-label="Back to temperature settings"
+        aria-label={label}
       >
-        ← Settings
+        ←
       </button>
     );
   }
@@ -1681,7 +1681,7 @@ function DressingApp() {
 
     return (
       <main className="dress-app dress-overview">
-        {renderSettingsButton()}
+        {renderBackButton()}
         <header className="overview-header">
           <p>{headerText}</p>
           <h2>{soundEnabled ? "Tap a picture to hear it" : "First, look at everything"}</h2>
@@ -1819,7 +1819,7 @@ function DressingApp() {
 
     return (
       <main className="dress-app dress-dressing">
-        {renderSettingsButton()}
+        {renderBackButton()}
         <header className="dressing-header">
           <p>{headerText}</p>
           <h2>Tap when you find it</h2>
@@ -1897,7 +1897,7 @@ function DressingApp() {
   function renderDoneScreen() {
     return (
       <main className="dress-app dress-done">
-        {renderSettingsButton()}
+        {renderBackButton()}
         <div className="confetti" aria-hidden="true">
           {Array.from({ length: 36 }, (_, index) => (
             <span
@@ -2898,7 +2898,7 @@ const appStyles = `
   .names-toggle,
   .primary-action,
   .found-button,
-  .settings-button {
+  .back-button {
     min-height: 72px;
     border: 0;
     border-radius: 22px;
@@ -3027,22 +3027,33 @@ const appStyles = `
     background: linear-gradient(135deg, #ff6b6b 0%, #ffd93d 100%);
   }
 
-  .settings-button {
+  .back-button {
     position: absolute;
     left: max(14px, env(safe-area-inset-left));
     top: max(14px, env(safe-area-inset-top));
     z-index: 30;
-    min-height: 52px;
-    padding: 0 18px;
-    background: rgba(255, 255, 255, 0.9);
+    min-height: 56px;
+    min-width: 56px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    background: rgba(255, 255, 255, 0.95);
     color: #e75d38;
-    font-size: 18px;
+    font-size: 32px;
+    font-weight: 900;
+    line-height: 1;
     text-shadow: none;
     box-shadow: 0 10px 24px rgba(113, 55, 28, 0.18);
+    transition: transform 150ms ease, background 150ms ease;
   }
 
-  .settings-button:active {
-    transform: translateY(2px);
+  .back-button:hover {
+    background: #ffffff;
+    transform: scale(1.05);
+  }
+
+  .back-button:active {
+    transform: translateY(2px) scale(0.98);
   }
 
   .dress-overview,

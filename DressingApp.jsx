@@ -3454,6 +3454,7 @@ const appStyles = `
 
   .clothing-art-blend {
     mix-blend-mode: multiply;
+    filter: url(#remove-white);
   }
 
   .clothing-art-small {

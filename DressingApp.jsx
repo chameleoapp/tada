@@ -2961,8 +2961,9 @@ const appStyles = `
     content: "";
     position: absolute;
     inset: -28px -8px;
-    z-index: 0;
+    z-index: -1;
     background: url("/ui/big-red-button-cutout.png") center / contain no-repeat;
+    pointer-events: none;
   }
 
   .start-button,
@@ -2970,6 +2971,8 @@ const appStyles = `
   .primary-action,
   .found-button {
     isolation: isolate;
+    position: relative;
+    z-index: 0;
   }
 
   .start-button {
@@ -3152,6 +3155,8 @@ const appStyles = `
     overflow-x: hidden;
     overflow-y: auto;
     padding: 2px;
+    position: relative;
+    z-index: 2;
   }
 
   .dressing-single {
@@ -3174,6 +3179,8 @@ const appStyles = `
     place-items: center;
     min-height: 148px;
     padding: 12px;
+    position: relative;
+    z-index: 2;
   }
 
   .add-item-button {
@@ -3481,7 +3488,10 @@ const appStyles = `
   .bottom-action {
     display: grid;
     gap: 10px;
+    padding-top: 32px;
     padding-bottom: env(safe-area-inset-bottom);
+    position: relative;
+    z-index: 1;
   }
 
   .undo-dismiss {

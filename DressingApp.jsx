@@ -758,7 +758,12 @@ function DressingApp() {
 
   function startDressingFlow() {
     unlockItemAudio();
-    playTapSound();
+    const ctx = getSharedAudioContext();
+    if (ctx && ctx.state === "suspended") {
+      ctx.resume().then(() => playTapSound()).catch(() => {});
+    } else {
+      playTapSound();
+    }
     trackEvent(
       "show_outfit",
       { temperature, weather: weatherKey, sky: skyCondition, outfit_id: activeOutfitId },
@@ -775,7 +780,12 @@ function DressingApp() {
   function startDressing() {
     if (!outfitItems.length) return;
     unlockItemAudio();
-    playTapSound();
+    const ctx = getSharedAudioContext();
+    if (ctx && ctx.state === "suspended") {
+      ctx.resume().then(() => playTapSound()).catch(() => {});
+    } else {
+      playTapSound();
+    }
     setItemStates(createInitialItemStates(outfitItems));
     setReward(null);
     setScreen("dressing");
@@ -916,11 +926,22 @@ function DressingApp() {
     const finished = checkAllResolved(nextStates);
     const delay = reducedMotion.current ? 1400 : 2800;
 
-    // Play during the tap gesture so browsers allow audio (delayed start = blocked).
-    if (finished) {
-      playWinSound(0.12);
+    // Ensure audio context is resumed during the user gesture
+    const ctx = getSharedAudioContext();
+    if (ctx && ctx.state === "suspended") {
+      ctx.resume().then(() => {
+        if (finished) {
+          playWinSound(0.12);
+        } else {
+          playTapSound();
+        }
+      }).catch(() => {});
     } else {
-      playTapSound();
+      if (finished) {
+        playWinSound(0.12);
+      } else {
+        playTapSound();
+      }
     }
 
     setItemStates(nextStates);
@@ -945,7 +966,12 @@ function DressingApp() {
     setItemStates(nextStates);
 
     if (checkAllResolved(nextStates)) {
-      playWinSound();
+      const ctx = getSharedAudioContext();
+      if (ctx && ctx.state === "suspended") {
+        ctx.resume().then(() => playWinSound()).catch(() => {});
+      } else {
+        playWinSound();
+      }
       setScreen("done");
       return;
     }

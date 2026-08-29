@@ -1257,7 +1257,7 @@ function DressingApp() {
               {weatherError && (
                 <>
                   <p className="weather-error">{weatherError}</p>
-                  {weatherError.includes("permission") || weatherError.includes("denied") && (
+                  {(weatherError.includes("permission") || weatherError.includes("denied")) && (
                     <p className="weather-help">
                       To fix: Click the 🔒 icon in address bar → Site settings → Reset permissions → Reload page
                     </p>

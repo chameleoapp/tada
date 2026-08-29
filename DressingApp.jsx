@@ -1695,9 +1695,30 @@ function DressingApp() {
                 onRemove={dismissOverviewItem}
               />
             ))}
+            <div className="add-item-tile">
+              <button
+                type="button"
+                className="add-item-button"
+                onClick={() => setShowQuickAdd(true)}
+                aria-label="Add missing items"
+              >
+                <span className="add-item-plus">+</span>
+                <span className="add-item-text">Add item</span>
+              </button>
+            </div>
           </section>
         ) : (
-          <p className="overview-empty">All items were swiped away.</p>
+          <div className="overview-empty-state">
+            <p className="overview-empty">All items were swiped away.</p>
+            <button
+              type="button"
+              className="add-items-empty-button"
+              onClick={() => setShowQuickAdd(true)}
+            >
+              <span className="add-item-plus-large">+</span>
+              <span>Add items</span>
+            </button>
+          </div>
         )}
 
         <footer className="bottom-action">
@@ -1716,6 +1737,68 @@ function DressingApp() {
             </button>
           )}
         </footer>
+
+        {showQuickAdd && (
+          <div className="quick-add-modal">
+            <div className="quick-add-header">
+              <div className="quick-add-title">
+                <h3>Add missing items</h3>
+                <p className="quick-add-subtitle">Select items that might be missing from today's outfit</p>
+              </div>
+              <button
+                type="button"
+                className="text-button"
+                onClick={() => {
+                  setShowQuickAdd(false);
+                  setQuickAddItems([]);
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+            <div className="catalog-grid quick-add-grid">
+              {clothingCatalog.map((item) => {
+                const selected = quickAddItems.includes(item.id);
+                const alreadyInOutfit = outfitItems.some((outfitItem) => outfitItem.id === item.id);
+                return (
+                  <div
+                    key={item.id}
+                    className={`catalog-item-wrap ${selected ? "is-selected" : ""} ${alreadyInOutfit ? "is-disabled" : ""}`}
+                  >
+                    <button
+                      type="button"
+                      className="catalog-item"
+                      onClick={() => toggleQuickAddItem(item.id)}
+                      disabled={alreadyInOutfit}
+                      aria-pressed={selected}
+                    >
+                      <div className="item-sound-wrap">
+                        <ClothingArt
+                          item={item}
+                          size="small"
+                          customSrc={customPhotos[item.id]}
+                          blend
+                        />
+                      </div>
+                      <span>{item.name}</span>
+                      {alreadyInOutfit && <span className="already-added">✓</span>}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="quick-add-actions">
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={applyQuickAdd}
+                disabled={quickAddItems.length === 0}
+              >
+                Add {quickAddItems.length > 0 ? `${quickAddItems.length} item${quickAddItems.length === 1 ? '' : 's'}` : 'items'}
+              </button>
+            </div>
+          </div>
+        )}
       </main>
     );
   }
@@ -3000,14 +3083,55 @@ const appStyles = `
     opacity: 0.9;
   }
 
-  .overview-empty {
+  .overview-empty-state {
     display: grid;
+    gap: 20px;
     place-items: center;
-    margin: 0;
+    place-content: center;
     padding: 24px 12px;
+  }
+
+  .overview-empty {
+    margin: 0;
     font-size: 24px;
     font-weight: 900;
     text-align: center;
+  }
+
+  .add-items-empty-button {
+    display: grid;
+    gap: 12px;
+    justify-items: center;
+    min-width: 180px;
+    padding: 20px 28px;
+    border: 0;
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.9);
+    color: #e75d38;
+    font-family: inherit;
+    font-size: 20px;
+    font-weight: 900;
+    text-shadow: none;
+    box-shadow: 0 12px 28px rgba(113, 55, 28, 0.18);
+    transition: transform 180ms ease;
+  }
+
+  .add-items-empty-button:active {
+    transform: scale(0.96);
+  }
+
+  .add-item-plus-large {
+    display: grid;
+    place-items: center;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: #4caf50;
+    color: #ffffff;
+    font-size: 42px;
+    font-weight: 900;
+    line-height: 1;
+    box-shadow: 0 6px 18px rgba(76, 175, 80, 0.4);
   }
 
   .dressing-header .progress-track {
@@ -3043,6 +3167,80 @@ const appStyles = `
     overflow: hidden;
     border-radius: 24px;
     touch-action: pan-y;
+  }
+
+  .add-item-tile {
+    display: grid;
+    place-items: center;
+    min-height: 148px;
+    padding: 12px;
+  }
+
+  .add-item-button {
+    display: grid;
+    gap: 8px;
+    justify-items: center;
+    align-content: center;
+    width: 100%;
+    height: 100%;
+    min-height: 148px;
+    border: 3px dashed rgba(255, 255, 255, 0.6);
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.14);
+    color: #ffffff;
+    font-family: inherit;
+    text-shadow: inherit;
+    transition: all 200ms ease;
+    cursor: pointer;
+  }
+
+  .add-item-button:hover {
+    border-color: #ffffff;
+    background: rgba(255, 255, 255, 0.24);
+    transform: scale(1.02);
+  }
+
+  .add-item-button:active {
+    transform: scale(0.98);
+  }
+
+  .add-item-plus {
+    display: grid;
+    place-items: center;
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: #4caf50;
+    color: #ffffff;
+    font-size: 48px;
+    font-weight: 900;
+    line-height: 1;
+    box-shadow: 0 6px 18px rgba(76, 175, 80, 0.4);
+    animation: addItemPulse 1.6s ease-in-out infinite;
+  }
+
+  .add-item-text {
+    font-size: 18px;
+    font-weight: 900;
+  }
+
+  .no-names .add-item-tile {
+    min-height: 164px;
+  }
+
+  .no-names .add-item-button {
+    min-height: 164px;
+  }
+
+  @keyframes addItemPulse {
+    0%, 100% {
+      transform: scale(1);
+      box-shadow: 0 6px 18px rgba(76, 175, 80, 0.4);
+    }
+    50% {
+      transform: scale(1.08);
+      box-shadow: 0 8px 24px rgba(76, 175, 80, 0.6);
+    }
   }
 
   .outfit-tile-hint {
@@ -3553,6 +3751,11 @@ const appStyles = `
     .again-button,
     .primary-action,
     .found-button {
+      animation: none !important;
+    }
+
+    .add-item-plus,
+    .quick-add-icon {
       animation: none !important;
     }
   }

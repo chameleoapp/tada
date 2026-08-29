@@ -1256,67 +1256,6 @@ function DressingApp() {
             </button>
           </div>
 
-          {showQuickAdd && (
-            <div className="quick-add-modal">
-              <div className="quick-add-header">
-                <div className="quick-add-title">
-                  <h3>Add missing items</h3>
-                  <p className="quick-add-subtitle">Select items that might be missing from today's outfit</p>
-                </div>
-                <button
-                  type="button"
-                  className="text-button"
-                  onClick={() => {
-                    setShowQuickAdd(false);
-                    setQuickAddItems([]);
-                  }}
-                >
-                  Cancel
-                </button>
-              </div>
-              <div className="catalog-grid quick-add-grid">
-                {clothingCatalog.map((item) => {
-                  const selected = quickAddItems.includes(item.id);
-                  const alreadyInOutfit = activeOutfit.items.some((outfitItem) => outfitItem.id === item.id) && !dismissedItemIds.includes(item.id);
-                  return (
-                    <div
-                      key={item.id}
-                      className={`catalog-item-wrap ${selected ? "is-selected" : ""} ${alreadyInOutfit ? "is-disabled" : ""}`}
-                    >
-                      <button
-                        type="button"
-                        className="catalog-item"
-                        onClick={() => toggleQuickAddItem(item.id)}
-                        disabled={alreadyInOutfit}
-                        aria-pressed={selected}
-                      >
-                        <div className="item-sound-wrap">
-                          <ClothingArt
-                            item={item}
-                            size="small"
-                            customSrc={customPhotos[item.id]}
-                            blend
-                          />
-                        </div>
-                        <span>{item.name}</span>
-                        {alreadyInOutfit && <span className="already-added">✓</span>}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="quick-add-actions">
-                <button
-                  type="button"
-                  className="secondary-button"
-                  onClick={applyQuickAdd}
-                  disabled={quickAddItems.length === 0}
-                >
-                  Add {quickAddItems.length > 0 ? `${quickAddItems.length} item${quickAddItems.length === 1 ? '' : 's'}` : 'items'}
-                </button>
-              </div>
-            </div>
-          )}
 
           <p className="field-label" id="child-gender-label">
             Child
@@ -1662,6 +1601,68 @@ function DressingApp() {
             </div>
           )}
         </section>
+
+        {showQuickAdd && (
+          <div className="quick-add-modal">
+            <div className="quick-add-header">
+              <div className="quick-add-title">
+                <h3>Add missing items</h3>
+                <p className="quick-add-subtitle">Select items that might be missing from today's outfit</p>
+              </div>
+              <button
+                type="button"
+                className="text-button"
+                onClick={() => {
+                  setShowQuickAdd(false);
+                  setQuickAddItems([]);
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+            <div className="catalog-grid quick-add-grid">
+              {clothingCatalog.map((item) => {
+                const selected = quickAddItems.includes(item.id);
+                const alreadyInOutfit = activeOutfit.items.some((outfitItem) => outfitItem.id === item.id) && !dismissedItemIds.includes(item.id);
+                return (
+                  <div
+                    key={item.id}
+                    className={`catalog-item-wrap ${selected ? "is-selected" : ""} ${alreadyInOutfit ? "is-disabled" : ""}`}
+                  >
+                    <button
+                      type="button"
+                      className="catalog-item"
+                      onClick={() => toggleQuickAddItem(item.id)}
+                      disabled={alreadyInOutfit}
+                      aria-pressed={selected}
+                    >
+                      <div className="item-sound-wrap">
+                        <ClothingArt
+                          item={item}
+                          size="small"
+                          customSrc={customPhotos[item.id]}
+                          blend
+                        />
+                      </div>
+                      <span>{item.name}</span>
+                      {alreadyInOutfit && <span className="already-added">✓</span>}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="quick-add-actions">
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={applyQuickAdd}
+                disabled={quickAddItems.length === 0}
+              >
+                Add {quickAddItems.length > 0 ? `${quickAddItems.length} item${quickAddItems.length === 1 ? '' : 's'}` : 'items'}
+              </button>
+            </div>
+          </div>
+        )}
       </main>
     );
   }

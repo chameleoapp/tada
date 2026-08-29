@@ -58,6 +58,7 @@ import {
   getCurrentWeather,
   clearWeatherCache,
   formatLocation,
+  getCachedWeather,
 } from "./src/weatherService.js";
 
 const TEMP_WHEEL_STEP = 5;
@@ -588,6 +589,17 @@ function DressingApp() {
       console.error("Failed to save autoWeatherEnabled setting:", error);
     }
   }, [autoWeatherEnabled]);
+
+  useEffect(() => {
+    if (autoWeatherEnabled && !weatherLocation && !isLoadingWeather) {
+      const cachedWeather = getCachedWeather();
+      if (cachedWeather) {
+        setTemperature(cachedWeather.temperature);
+        setSkyCondition(cachedWeather.skyCondition);
+        setWeatherLocation(formatLocation(cachedWeather));
+      }
+    }
+  }, [autoWeatherEnabled, weatherLocation, isLoadingWeather]);
 
   function openAuthModal(feature, mode = "login") {
     trackEvent(
@@ -1243,7 +1255,14 @@ function DressingApp() {
                 </p>
               )}
               {weatherError && (
-                <p className="weather-error">{weatherError}</p>
+                <>
+                  <p className="weather-error">{weatherError}</p>
+                  {weatherError.includes("permission") || weatherError.includes("denied") && (
+                    <p className="weather-help">
+                      To fix: Click the 🔒 icon in address bar → Site settings → Reset permissions → Reload page
+                    </p>
+                  )}
+                </>
               )}
               {weatherLocation && !weatherError && (
                 <p className="weather-success">✓ Weather from your location</p>
@@ -2915,6 +2934,18 @@ const appStyles = `
     font-weight: 600;
     line-height: 1.3;
     color: #333;
+  }
+
+  .weather-help {
+    width: 100%;
+    margin: 8px 0 0;
+    padding: 8px 12px;
+    border-radius: 12px;
+    background: rgba(33, 150, 243, 0.15);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.4;
+    color: #1976D2;
   }
 
   .weather-success {

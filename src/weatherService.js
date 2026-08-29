@@ -6,6 +6,23 @@ const WEATHER_CACHE_KEY = "tada_weather_cache";
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 
 /**
+ * Check if geolocation permission is granted (for browsers that support Permissions API)
+ */
+export async function checkGeolocationPermission() {
+  try {
+    if (!navigator.permissions) {
+      return "prompt"; // API not supported, assume prompt
+    }
+    
+    const result = await navigator.permissions.query({ name: 'geolocation' });
+    return result.state; // 'granted', 'denied', or 'prompt'
+  } catch (error) {
+    console.error("Error checking geolocation permission:", error);
+    return "prompt";
+  }
+}
+
+/**
  * Get user's location using browser geolocation API
  */
 export async function getUserLocation() {

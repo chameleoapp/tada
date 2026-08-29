@@ -1249,17 +1249,20 @@ function DressingApp() {
               type="button"
               className="quick-add-button"
               onClick={() => setShowQuickAdd(true)}
-              aria-label="Add items from library"
-              title="Add items from clothing library"
+              aria-label="Add missing items"
+              title="Add items that might be missing from today's outfit"
             >
-              +
+              <span className="quick-add-icon">+</span>
             </button>
           </div>
 
           {showQuickAdd && (
             <div className="quick-add-modal">
               <div className="quick-add-header">
-                <h3>Add items from library</h3>
+                <div className="quick-add-title">
+                  <h3>Add missing items</h3>
+                  <p className="quick-add-subtitle">Select items that might be missing from today's outfit</p>
+                </div>
                 <button
                   type="button"
                   className="text-button"
@@ -2021,18 +2024,46 @@ const appStyles = `
     min-width: 52px;
     min-height: 52px;
     padding: 0;
-    border: 0;
+    border: 3px solid rgba(255, 255, 255, 0.6);
     border-radius: 18px;
     background: #4caf50;
     color: #ffffff;
     font-size: 32px;
     font-weight: 900;
     line-height: 1;
-    box-shadow: 0 10px 24px rgba(76, 175, 80, 0.3);
+    box-shadow: 0 10px 24px rgba(76, 175, 80, 0.4);
+    transition: transform 140ms ease, box-shadow 140ms ease;
+    position: relative;
+    overflow: visible;
+  }
+
+  .quick-add-button:hover {
+    transform: scale(1.05);
+    box-shadow: 0 12px 28px rgba(76, 175, 80, 0.5);
   }
 
   .quick-add-button:active {
     transform: scale(0.95);
+  }
+
+  .quick-add-icon {
+    display: block;
+    animation: plusPulse 1.8s ease-in-out infinite;
+  }
+
+  @keyframes plusPulse {
+    0%, 100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.12);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .quick-add-icon {
+      animation: none;
+    }
   }
 
   .quick-add-modal {
@@ -2048,16 +2079,27 @@ const appStyles = `
 
   .quick-add-header {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 12px;
     margin-bottom: 16px;
+  }
+
+  .quick-add-title {
+    flex: 1;
   }
 
   .quick-add-header h3 {
     margin: 0;
     font-size: 24px;
     font-weight: 900;
+  }
+
+  .quick-add-subtitle {
+    margin: 4px 0 0;
+    font-size: 15px;
+    font-weight: 800;
+    opacity: 0.9;
   }
 
   .quick-add-grid {

@@ -370,6 +370,21 @@ function scheduleFanfare(ctx, delaySeconds = 0) {
   playChord(ctx, [523.25, 659.25, 783.99, 1046.5], t0 + 1.15, 0.9, 0.48);
 }
 
+function scheduleFinalCelebration(ctx, delaySeconds = 0) {
+  const t0 = ctx.currentTime + Math.max(0.02, delaySeconds);
+  // Extended triumphant fanfare for final celebration
+  // C5 E5 G5 C6 — ta-ta-ta-taa!
+  playChord(ctx, [523.25], t0, 0.2, 0.6);
+  playChord(ctx, [659.25], t0 + 0.22, 0.2, 0.6);
+  playChord(ctx, [783.99], t0 + 0.44, 0.2, 0.62);
+  playChord(ctx, [1046.5], t0 + 0.66, 0.5, 0.65);
+  // Big finale chord
+  playChord(ctx, [523.25, 659.25, 783.99, 1046.5], t0 + 1.25, 1.2, 0.55);
+  // Extra celebration chords
+  playChord(ctx, [659.25, 783.99, 1046.5], t0 + 2.5, 0.3, 0.5);
+  playChord(ctx, [523.25, 659.25, 783.99, 1046.5, 1318.5], t0 + 2.85, 1.5, 0.58);
+}
+
 function playNotes(notes, volume = 0.25, duration = 0.25, step = 0.09) {
   const ctx = getSharedAudioContext();
   if (!ctx) return;
@@ -401,6 +416,13 @@ function playWinSound(delaySeconds = 0) {
   if (!ctx) return;
   if (ctx.state !== "running") ctx.resume().catch(() => {});
   scheduleFanfare(ctx, delaySeconds);
+}
+
+function playFinalCelebration(delaySeconds = 0) {
+  const ctx = getSharedAudioContext();
+  if (!ctx) return;
+  if (ctx.state !== "running") ctx.resume().catch(() => {});
+  scheduleFinalCelebration(ctx, delaySeconds);
 }
 
 function DressingApp() {
@@ -657,6 +679,17 @@ function DressingApp() {
 
   useEffect(() => {
     if (screen !== "done") return undefined;
+    
+    // Play BIG celebration fanfare when showing done screen with confetti
+    const ctx = getSharedAudioContext();
+    if (ctx) {
+      if (ctx.state === "suspended") {
+        ctx.resume().then(() => playFinalCelebration(0.1)).catch(() => {});
+      } else {
+        playFinalCelebration(0.1);
+      }
+    }
+    
     const timer = window.setTimeout(() => {
       stopItemSpeech();
       spokenItemKeyRef.current = "";

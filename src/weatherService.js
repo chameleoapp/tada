@@ -26,28 +26,40 @@ export async function checkGeolocationPermission() {
  * Get user's location using browser geolocation API
  */
 export async function getUserLocation() {
+  console.log("[Weather] getUserLocation called");
   return new Promise((resolve, reject) => {
     // Check if running in secure context (HTTPS or localhost)
+    console.log("[Weather] Protocol:", window.location.protocol);
+    console.log("[Weather] Hostname:", window.location.hostname);
+    
     if (window.location.protocol !== 'https:' && 
         window.location.hostname !== 'localhost' && 
         window.location.hostname !== '127.0.0.1') {
+      console.error("[Weather] Not HTTPS - rejecting");
       reject(new Error("Location access requires HTTPS. Please use a secure connection."));
       return;
     }
 
     if (!navigator.geolocation) {
+      console.error("[Weather] Geolocation not supported");
       reject(new Error("Geolocation is not supported by this browser"));
       return;
     }
 
+    console.log("[Weather] Requesting geolocation...");
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        console.log("[Weather] Geolocation success:", position.coords);
         resolve({
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
         });
       },
       (error) => {
+        console.error("[Weather] Geolocation error:", error);
+        console.error("[Weather] Error code:", error.code);
+        console.error("[Weather] Error message:", error.message);
+        
         let errorMessage = "Location access denied";
         switch (error.code) {
           case error.PERMISSION_DENIED:
@@ -177,15 +189,23 @@ export function cacheWeatherData(weatherData) {
  * Returns cached data if available, otherwise fetches fresh data
  */
 export async function getCurrentWeather() {
+  console.log("[Weather] getCurrentWeather called");
+  
   // Try cache first
   const cached = getCachedWeather();
   if (cached) {
+    console.log("[Weather] Using cached weather:", cached);
     return cached;
   }
 
+  console.log("[Weather] No cache, fetching fresh data");
+  
   // Get location and fetch weather
   const location = await getUserLocation();
+  console.log("[Weather] Location received:", location);
+  
   const weatherData = await fetchWeatherData(location.latitude, location.longitude);
+  console.log("[Weather] Weather data fetched:", weatherData);
   
   // Cache the result
   cacheWeatherData(weatherData);

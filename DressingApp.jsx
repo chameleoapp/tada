@@ -897,20 +897,28 @@ function DressingApp() {
   }
 
   async function loadAutoWeather() {
-    if (isLoadingWeather) return;
+    console.log("[Weather] loadAutoWeather called");
+    if (isLoadingWeather) {
+      console.log("[Weather] Already loading, skipping");
+      return;
+    }
     
     setIsLoadingWeather(true);
     setWeatherError("");
+    console.log("[Weather] Starting geolocation request...");
     
     try {
       const weatherData = await getCurrentWeather();
+      console.log("[Weather] Weather data received:", weatherData);
       setTemperature(weatherData.temperature);
       setSkyCondition(weatherData.skyCondition);
       setWeatherLocation(formatLocation(weatherData));
       showStatusMessage("Weather updated automatically");
       trackEvent("auto_weather_loaded", { temperature: weatherData.temperature, sky: weatherData.skyCondition }, user?.id ?? null);
     } catch (error) {
-      console.error("Failed to load weather:", error);
+      console.error("[Weather] Failed to load weather:", error);
+      console.error("[Weather] Error name:", error.name);
+      console.error("[Weather] Error message:", error.message);
       
       let errorMsg = "Unable to get weather";
       if (error.message.includes("denied") || error.message.includes("permission")) {
@@ -929,6 +937,7 @@ function DressingApp() {
       showStatusMessage(errorMsg);
     } finally {
       setIsLoadingWeather(false);
+      console.log("[Weather] loadAutoWeather finished");
     }
   }
 

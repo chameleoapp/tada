@@ -289,7 +289,7 @@ function OverviewItemTile({ item, showNames, soundEnabled, customSrc, onSpeak, o
         className={`outfit-tile ${isSwiping ? "is-swiping" : ""} ${isExiting ? "is-exiting" : ""}`}
         style={{
           transform:
-            isSwiping || isExiting || dragX ? `translate3d(${dragX}px, 0, 0)` : undefined,
+            isSwiping || isExiting ? `translate3d(${dragX}px, 0, 0)` : undefined,
           opacity: isExiting ? 0 : 1,
         }}
         onPointerDown={handlePointerDown}
@@ -3371,10 +3371,11 @@ const appStyles = `
     user-select: none;
     -webkit-user-select: none;
     transition: transform 180ms ease, opacity 180ms ease;
+    -webkit-tap-highlight-color: transparent;
   }
 
-  button.outfit-tile:active {
-    transform: scale(0.98);
+  button.outfit-tile:active:not(.is-swiping):not(.is-exiting) {
+    transform: scale(1.04);
   }
 
   button.outfit-tile.is-swiping {
@@ -3384,11 +3385,7 @@ const appStyles = `
 
   button.outfit-tile.is-exiting {
     pointer-events: none;
-  }
-
-  button.outfit-tile.is-swiping:active,
-  button.outfit-tile.is-exiting:active {
-    transform: none;
+    transition: transform 220ms ease, opacity 220ms ease;
   }
 
   .item-sound-wrap {

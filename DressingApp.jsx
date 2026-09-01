@@ -58,6 +58,7 @@ import {
   getCurrentWeather,
   clearWeatherCache,
   formatLocation,
+  getCachedWeather,
 } from "./src/weatherService.js";
 
 const TEMP_WHEEL_STEP = 5;
@@ -589,6 +590,17 @@ function DressingApp() {
     }
   }, [autoWeatherEnabled]);
 
+  useEffect(() => {
+    if (autoWeatherEnabled && !weatherLocation && !isLoadingWeather) {
+      const cachedWeather = getCachedWeather();
+      if (cachedWeather) {
+        setTemperature(cachedWeather.temperature);
+        setSkyCondition(cachedWeather.skyCondition);
+        setWeatherLocation(formatLocation(cachedWeather));
+      }
+    }
+  }, [autoWeatherEnabled, weatherLocation, isLoadingWeather]);
+
   function openAuthModal(feature, mode = "login") {
     trackEvent(
       "pro_gate",
@@ -885,27 +897,47 @@ function DressingApp() {
   }
 
   async function loadAutoWeather() {
-    if (isLoadingWeather) return;
+    console.log("[Weather] loadAutoWeather called");
+    if (isLoadingWeather) {
+      console.log("[Weather] Already loading, skipping");
+      return;
+    }
     
     setIsLoadingWeather(true);
     setWeatherError("");
+    console.log("[Weather] Starting geolocation request...");
     
     try {
       const weatherData = await getCurrentWeather();
+      console.log("[Weather] Weather data received:", weatherData);
       setTemperature(weatherData.temperature);
       setSkyCondition(weatherData.skyCondition);
       setWeatherLocation(formatLocation(weatherData));
       showStatusMessage("Weather updated automatically");
       trackEvent("auto_weather_loaded", { temperature: weatherData.temperature, sky: weatherData.skyCondition }, user?.id ?? null);
     } catch (error) {
-      console.error("Failed to load weather:", error);
-      const errorMsg = error.message.includes("denied") 
-        ? "Tap 'Get weather' button to allow location access"
-        : "Unable to get weather";
+      console.error("[Weather] Failed to load weather:", error);
+      console.error("[Weather] Error name:", error.name);
+      console.error("[Weather] Error message:", error.message);
+      
+      let errorMsg = "Unable to get weather";
+      if (error.message.includes("denied") || error.message.includes("permission")) {
+        errorMsg = error.message;
+      } else if (error.message.includes("not supported")) {
+        errorMsg = "Your browser doesn't support location services";
+      } else if (error.message.includes("timeout")) {
+        errorMsg = "Location request timed out. Please try again.";
+      } else if (error.message.includes("unavailable")) {
+        errorMsg = "Location is currently unavailable";
+      } else if (error.message) {
+        errorMsg = error.message;
+      }
+      
       setWeatherError(errorMsg);
-      showStatusMessage("Please tap 'Get weather' to enable location.");
+      showStatusMessage(errorMsg);
     } finally {
       setIsLoadingWeather(false);
+      console.log("[Weather] loadAutoWeather finished");
     }
   }
 
@@ -1226,8 +1258,20 @@ function DressingApp() {
               >
                 {isLoadingWeather ? "Loading..." : weatherLocation ? "Refresh weather" : "Get weather"}
               </button>
+              {!weatherLocation && !weatherError && (
+                <p className="weather-hint">
+                  Tap 'Get weather' button to allow location access
+                </p>
+              )}
               {weatherError && (
-                <p className="weather-error">{weatherError}</p>
+                <>
+                  <p className="weather-error">{weatherError}</p>
+                  {(weatherError.includes("permission") || weatherError.includes("denied")) && (
+                    <p className="weather-help">
+                      To fix: Click the 🔒 icon in address bar → Site settings → Reset permissions → Reload page
+                    </p>
+                  )}
+                </>
               )}
               {weatherLocation && !weatherError && (
                 <p className="weather-success">✓ Weather from your location</p>
@@ -2888,6 +2932,30 @@ const appStyles = `
     font-size: 15px;
     font-weight: 800;
     line-height: 1.3;
+  }
+
+  .weather-hint {
+    width: 100%;
+    margin: 0;
+    padding: 8px 12px;
+    border-radius: 12px;
+    background: rgba(255, 152, 0, 0.15);
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.3;
+    color: #333;
+  }
+
+  .weather-help {
+    width: 100%;
+    margin: 8px 0 0;
+    padding: 8px 12px;
+    border-radius: 12px;
+    background: rgba(33, 150, 243, 0.15);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.4;
+    color: #1976D2;
   }
 
   .weather-success {

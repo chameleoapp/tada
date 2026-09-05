@@ -64,7 +64,8 @@ const TEMP_WHEEL_STEP = 5;
 const OVERVIEW_SWIPE_DISMISS_PX = 88;
 const OVERVIEW_SWIPE_AXIS_PX = 12;
 const OVERVIEW_SWIPE_EXIT_MS = 220;
-const SUPPORT_URL = import.meta.env.VITE_SUPPORT_URL;
+const SUPPORT_URL =
+  import.meta.env.VITE_SUPPORT_URL || "https://buymeacoffee.com/train_your_unicorn";
 const FORMSPREE_ENDPOINT = import.meta.env.VITE_FORMSPREE_ENDPOINT;
 
 let sharedAudioContext;
@@ -1654,21 +1655,23 @@ function DressingApp() {
           <button type="button" className="start-button" onClick={startDressingFlow} aria-label="Show outfit">
           </button>
 
-          {(SUPPORT_URL || FORMSPREE_ENDPOINT) && (
+          <footer className="support-block">
+            <p className="support-title">Support this project</p>
+            <p className="support-copy">
+              If Tada helps your mornings, you can buy us a coffee on Buy Me a Coffee.
+            </p>
             <div className="parent-footer-actions">
-              {SUPPORT_URL && (
-                <a
-                  className="secondary-button support-link"
-                  href={SUPPORT_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Support this project
-                </a>
-              )}
+              <a
+                className="secondary-button support-link"
+                href={SUPPORT_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Buy me a coffee
+              </a>
               <FeedbackButton endpoint={FORMSPREE_ENDPOINT} />
             </div>
-          )}
+          </footer>
         </section>
 
         {showQuickAdd && (
@@ -2372,11 +2375,31 @@ const appStyles = `
     cursor: not-allowed;
   }
 
+  .support-block {
+    margin-top: 28px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.28);
+  }
+
+  .support-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 900;
+  }
+
+  .support-copy {
+    margin: 6px 0 0;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.35;
+    opacity: 0.92;
+  }
+
   .parent-footer-actions {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
-    margin-top: 18px;
+    margin-top: 14px;
   }
 
   .support-link {

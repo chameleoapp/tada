@@ -54,7 +54,7 @@ export function FeedbackButton({ endpoint }) {
     return (
       <button
         type="button"
-        className="feedback-trigger"
+        className="secondary-button support-link"
         onClick={() => setIsOpen(true)}
       >
         Send feedback
